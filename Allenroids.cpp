@@ -14,6 +14,9 @@
  *		Use reverse drive:		-(36 + levelNumber) per 30th of a second
  *
  */
+
+#include <cmath>
+
 #include "Allenroids.h"
 
 #include "ConfigureScreen.h"
@@ -1276,7 +1279,7 @@ Asteroid *spawnAsteroid(int sizeIn, float positionX, float positionY, Vector hin
 	
 	if(sizeIn == ASTEROID_BIG){
 		do{
-			magnitude = (1+levelNumber/5)*((float) rand()/RAND_MAX + abs(sizeIn/sizeof(Asteroid::asteroidSizes)/sizeof(int)) - 1.5 );
+			magnitude = (1+levelNumber/5)*((float) rand()/RAND_MAX + std::abs((float) sizeIn/sizeof(Asteroid::asteroidSizes)/sizeof(int)) - 1.5 );
 		}while(magnitude == 0); //an asteroid must be moving!
 	}
 	else
@@ -1304,7 +1307,6 @@ void spawnKerblooie(int sizeIn, float radius, GLubyte *colorHint, Coordinate pos
 	int particleLifespan;
 	float particleRadius;
 
-	
 	switch(sizeIn){
 		case KERBLOOIE_HUGE:
 			playSound(soundBuffer, EXPLOSION_HUGE_SOUND);
@@ -1319,6 +1321,8 @@ void spawnKerblooie(int sizeIn, float radius, GLubyte *colorHint, Coordinate pos
 			playSound(soundBuffer, EXPLOSION_SMALL_SOUND);
 			break;
 		case KERBLOOIE_TINY:
+			break;
+		default:
 			break;
 	}
 	kerblooieSize = Kerblooie::kerblooieSizes[sizeIn];
