@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(midnightbsd_space_game)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -36,4 +36,12 @@ set(SOURCE_FILES
     TitleScreen.cpp
     TitleScreen.h)
 
+find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+find_package(GLUT REQUIRED)
+find_package(SDL REQUIRED)
+
+include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} ${SDL_INCLUDE_DIRS} )
+
 add_executable(midnightbsd_space_game ${SOURCE_FILES})
+
+target_link_libraries(midnightbsd_space_game SDL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${SDL_LIBRARIES} )
