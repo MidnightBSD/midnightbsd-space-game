@@ -8,13 +8,16 @@
 
 #include "sound.h"
 #include "Allenroids.h"
+#include <array>
 #include <limits>
+#include <new>
+#include <vector>
 
 boolean audioOn;
 
 SoundSample channels[NUMBER_CHANNELS];
 
-char *soundName[]=
+const char *soundName[]=
 {								//soundBuffer Index:
 	"Sounds/Pop.wav",				//	0
 	"Sounds/PopAlien.wav",			//	1
@@ -35,6 +38,7 @@ char *soundName[]=
 };
 
 SDL_AudioCVT soundBuffer[NUMBER_SOUNDS];
+std::array<std::vector<Uint8>, NUMBER_SOUNDS> soundStorage;
 
 /****************************************************
  * soundInit
@@ -42,7 +46,7 @@ SDL_AudioCVT soundBuffer[NUMBER_SOUNDS];
  ***************************************************/
 void soundInit(){
 
-	SDL_AudioSpec soundFormat;
+	SDL_AudioSpec soundFormat = {};
 	
     /* Set 16-bit stereo audio at 22Khz */
     soundFormat.freq = 22050;
@@ -72,7 +76,7 @@ void soundInit(){
  * loadSounds
  *  copies the specified sound names to memory
  ***************************************************/
-void loadSounds(char *nameBuffer[], SDL_AudioCVT soundBuffer[], unsigned int numberSounds){
+void loadSounds(const char * const nameBuffer[], SDL_AudioCVT soundBuffer[], unsigned int numberSounds){
 	unsigned int counter;
     SDL_AudioSpec wave;
     Uint8 *data;
@@ -95,11 +99,14 @@ void loadSounds(char *nameBuffer[], SDL_AudioCVT soundBuffer[], unsigned int num
 			SDL_FreeWAV(data);
 			return;
 		}
-		soundBuffer[counter].buf = (Uint8 *) malloc(dataLength * static_cast<size_t>(soundBuffer[counter].len_mult));
-		if(soundBuffer[counter].buf == NULL) {
+		try {
+			soundStorage[counter].resize(dataLength * static_cast<size_t>(soundBuffer[counter].len_mult));
+		}
+		catch(const std::bad_alloc &) {
 			SDL_FreeWAV(data);
 			return;
 		}
+		soundBuffer[counter].buf = soundStorage[counter].data();
 		memcpy(soundBuffer[counter].buf, data, dataLength);
 		soundBuffer[counter].len = dataLength;
 		SDL_ConvertAudio(&soundBuffer[counter]);

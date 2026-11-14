@@ -49,6 +49,6 @@ typedef struct soundSample{
 
 //Prototypes
 extern void soundInit();
-extern void loadSounds(char **, SDL_AudioCVT *, unsigned int);
+extern void loadSounds(const char * const [], SDL_AudioCVT *, unsigned int);
 extern void mixaudio(void *, Uint8 *, int);
 extern void playSound(SDL_AudioCVT *, int);

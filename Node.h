@@ -13,9 +13,9 @@
 template<class Object>
 class Node{
 	public:
-		Node<Object> *previousNode;
-		Object *object;
-		Node<Object> *nextNode;
+		Node<Object> *previousNode = nullptr;
+		Object *object = nullptr;
+		Node<Object> *nextNode = nullptr;
 		
 		bool operator==( const Node<Object> &) const;
 
@@ -45,17 +45,10 @@ bool Node<Object>::operator==(const Node<Object> &rightHandSide) const{
  *  creates a new Node to be positioned after the specified Node
  ***************************************************/
 template<class Object>
-Node<Object>::Node(){
-	previousNode = NULL;
-	object = NULL;
-	nextNode = NULL;
-}
+Node<Object>::Node() = default;
  
 template<class Object>
-Node<Object>::Node(Node<Object> *specifiedPreviousNode, Object *data){
-	previousNode = specifiedPreviousNode;
-	object = data;
-	nextNode = specifiedPreviousNode->nextNode;
-}
+Node<Object>::Node(Node<Object> *specifiedPreviousNode, Object *data)
+	: previousNode(specifiedPreviousNode), object(data), nextNode(specifiedPreviousNode->nextNode) {}
 
 #endif

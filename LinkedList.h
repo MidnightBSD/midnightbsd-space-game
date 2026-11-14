@@ -19,12 +19,15 @@ class LinkedList{
 	
 	public:
 		LinkedList();
+		~LinkedList();
+		LinkedList(const LinkedList &) = delete;
+		LinkedList &operator=(const LinkedList &) = delete;
 		
 		Node<Object> * insertObject(Object *);
 		Node<Object> * insertObjectAfterPosition(Node<Object> *, Object *);
 		Node<Object> * removeNode(Node<Object> *);
 		void clearList();
-		bool isEmpty();
+		bool isEmpty() const;
 };
 
 
@@ -40,6 +43,18 @@ LinkedList<Object>::LinkedList(){
 	tail = new Node<Object>; //creates a tail after the head
 	head->nextNode = tail; //connects the head to the tail
 	tail->previousNode = head;
+}
+
+
+/****************************************************
+ * ~LinkedList
+ *  releases owned objects and list sentinel nodes
+ ***************************************************/
+template<class Object>
+LinkedList<Object>::~LinkedList(){
+	clearList();
+	delete tail;
+	delete head;
 }
 
 
@@ -105,7 +120,7 @@ void LinkedList<Object>::clearList(){
  *  returns true if the list has no contents
  ***************************************************/
 template<class Object>
-bool LinkedList<Object>::isEmpty(){
+bool LinkedList<Object>::isEmpty() const{
 	return (head->nextNode == tail);
 }
 
