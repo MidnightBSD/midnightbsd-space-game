@@ -358,7 +358,7 @@ void configurePrintButtons(MyButton *buttonList, unsigned int numberOfButtons, G
 			glColor4ub(	(GLubyte) (buttonList[counter].color[0] * 0.5), //darken by 50%
 						(GLubyte) (buttonList[counter].color[1] * 0.5),
 						(GLubyte) (buttonList[counter].color[2] * 0.5),
-						           buttonList[counter].color[4]
+					           buttonList[counter].color[3]
 					  );
 		}
 		else //just any old button
