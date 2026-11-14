@@ -151,7 +151,7 @@ void printHighScores() {
 	float           stringWidth             = 0;
 	float			charWidth				= 0.0;
 	char            columnHeadings[72]      = "";
-	char            dateForScore[10]        = "";	//a textual version of the high score's date
+	char            dateForScore[14]        = "";	//a textual version of the high score's date
 	char            highScoreString[128]    = "";
 	char            name[32]                = "";	// a temporary place to hold the name to print for the score
 	int             linePostion             = 0;	//in pixels; the distance from the top of the screen to render the current line of text.
@@ -237,7 +237,7 @@ void printHighScores() {
 	for(scoreIndex = 0; scoreIndex < NUMBER_HIGH_SCORES; scoreIndex++)
 	{
 		//Format the time for Month/Day/Year format
-		strftime(dateForScore,14, "%b. %d, %Y",localtime(&(highscores[scoreIndex].date)) );
+		strftime(dateForScore, sizeof(dateForScore), "%b. %d, %Y",localtime(&(highscores[scoreIndex].date)) );
 		
 		if(enterHighScoredMode == true && scoreIndex == indexNewScore){ //a line for entry of a new high score
 			glColor3ub(255,0,0); //Highlight the new score
