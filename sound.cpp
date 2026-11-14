@@ -9,13 +9,31 @@
 #include "sound.h"
 #include "Allenroids.h"
 #include <array>
+#include <cstdlib>
 #include <limits>
 #include <new>
 #include <vector>
 
 boolean audioOn;
-
 SoundSample channels[NUMBER_CHANNELS];
+
+namespace {
+bool audioSubsystemInitializedByGame = false;
+bool audioShutdownRegistered = false;
+
+bool queueSoundLocked(SDL_AudioCVT soundList[], int idToPlay) {
+    for (int index = 0; index < NUMBER_CHANNELS; ++index) {
+        if (channels[index].dataPosition >= channels[index].dataLength) {
+            channels[index].data = soundList[idToPlay].buf;
+            channels[index].dataLength = soundList[idToPlay].len_cvt;
+            channels[index].dataPosition = 0;
+            channels[index].soundID = idToPlay;
+            return true;
+        }
+    }
+    return false;
+}
+}
 
 const char *soundName[]=
 {								//soundBuffer Index:
@@ -45,6 +63,16 @@ std::array<std::vector<Uint8>, NUMBER_SOUNDS> soundStorage;
  *  set up SDL sound
  ***************************************************/
 void soundInit(){
+	if(audioOn)
+		return;
+
+	if(SDL_WasInit(SDL_INIT_AUDIO) == 0) {
+		if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+			audioOn = false;
+			return;
+		}
+		audioSubsystemInitializedByGame = true;
+	}
 
 	SDL_AudioSpec soundFormat = {};
 	
@@ -60,15 +88,36 @@ void soundInit(){
 	if( SDL_OpenAudio(&soundFormat, NULL) < 0) {
 		//printf("Warning: %s\n", SDL_GetError());
 		audioOn = false;
+		if(audioSubsystemInitializedByGame) {
+			SDL_QuitSubSystem(SDL_INIT_AUDIO);
+			audioSubsystemInitializedByGame = false;
+		}
 		return;
 	}
 	else
 		audioOn = true;
+
+	if(!audioShutdownRegistered) {
+		std::atexit(soundShutdown);
+		audioShutdownRegistered = true;
+	}
 	
 	loadSounds(soundName, soundBuffer, NUMBER_SOUNDS);
 	
 	SDL_PauseAudio(false); //activate sound
 	//load all the sounds here
+}
+
+void soundShutdown(){
+	if(audioOn) {
+		SDL_CloseAudio();
+		audioOn = false;
+	}
+
+	if(audioSubsystemInitializedByGame) {
+		SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		audioSubsystemInitializedByGame = false;
+	}
 }
 
 
@@ -124,6 +173,8 @@ void mixaudio(void *unused, Uint8 *stream, int length)
     unsigned int counter;
     //Uint32 amount; //as suggested by tutorial code; creates signed/unsigned complaints
 	int amount;
+
+	SDL_memset(stream, 0, length);
 	
     for ( counter = 0; counter < NUMBER_CHANNELS; counter++ ){
 		if(channels[counter].data == NULL ||
@@ -145,23 +196,22 @@ void mixaudio(void *unused, Uint8 *stream, int length)
  *	adapted from http://www.libsdl.org/intro/usingsound.html
  ***************************************************/
 void playSound(SDL_AudioCVT soundList[], int idToPlay){
-    int index;
+    SDL_LockAudio();
+    queueSoundLocked(soundList, idToPlay);
+    SDL_UnlockAudio();
+}
 
-    // Look for an empty (or finished) sound slot
-    for ( index = 0; index < NUMBER_CHANNELS; ++index ) {
-        if ( channels[index].dataPosition == channels[index].dataLength ) {
-			//a finished sound has been found (position = length)
-            break;
+bool playSoundIfFewerThan(SDL_AudioCVT soundList[], int idToPlay, unsigned int maximumInstances){
+    unsigned int activeInstances = 0;
+
+    SDL_LockAudio();
+    for (unsigned int index = 0; index < NUMBER_CHANNELS; ++index) {
+        if (channels[index].soundID == idToPlay &&
+            channels[index].dataPosition < channels[index].dataLength) {
+            ++activeInstances;
         }
     }
-    if ( index == NUMBER_CHANNELS )
-        return; //no slot found
-	
-    // Put the sound data in the slot (it starts playing immediately)
-    SDL_LockAudio();
-		channels[index].data = soundList[idToPlay].buf;
-		channels[index].dataLength = soundList[idToPlay].len_cvt;
-		channels[index].dataPosition = 0;
-		channels[index].soundID = idToPlay;
+    const bool queued = activeInstances < maximumInstances && queueSoundLocked(soundList, idToPlay);
     SDL_UnlockAudio();
+    return queued;
 }

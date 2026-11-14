@@ -40,13 +40,13 @@ set(SOURCE_FILES
 
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 find_package(GLUT REQUIRED)
-find_package(SDL REQUIRED)
+find_package(SDL2 REQUIRED CONFIG)
 
-include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} ${SDL_INCLUDE_DIRS} )
+include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} )
 
 add_executable(midnightbsd_space_game ${SOURCE_FILES})
 
-target_link_libraries(midnightbsd_space_game ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${SDL_LIBRARIES} )
+target_link_libraries(midnightbsd_space_game ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} SDL2::SDL2)
 
 include(CTest)
 
@@ -71,4 +71,9 @@ if(BUILD_TESTING)
     add_executable(ui_text_tests tests/UiTextTests.cpp)
     target_include_directories(ui_text_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME ui_text_tests COMMAND ui_text_tests)
+
+    add_executable(sound_tests tests/SoundTests.cpp sound.cpp)
+    target_include_directories(sound_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(sound_tests SDL2::SDL2)
+    add_test(NAME sound_tests COMMAND sound_tests)
 endif()

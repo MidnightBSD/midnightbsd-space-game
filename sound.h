@@ -5,13 +5,8 @@
  *  It allows us to make noise.
  */
 
-#if defined(__LINUX__)
-	#include "SDL/SDL.h"
-	#include "SDL/SDL_audio.h"
-#else
-	#include "SDL.h"
-	#include "SDL_audio.h"
-#endif
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
 
 #define NUMBER_CHANNELS 8
 
@@ -49,6 +44,8 @@ typedef struct soundSample{
 
 //Prototypes
 extern void soundInit();
+extern void soundShutdown();
 extern void loadSounds(const char * const [], SDL_AudioCVT *, unsigned int);
 extern void mixaudio(void *, Uint8 *, int);
 extern void playSound(SDL_AudioCVT *, int);
+extern bool playSoundIfFewerThan(SDL_AudioCVT *, int, unsigned int);

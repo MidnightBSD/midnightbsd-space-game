@@ -5,4 +5,4 @@ Based on Allenroids by Allen Smith.  The original title was freeware.  This is l
 
 Requirements on MidnightBSD:
 freeglut 3
-sdl 1.2.x
+SDL 2

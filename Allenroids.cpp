@@ -307,8 +307,6 @@ void drawList(LinkedList<GameObject> *list){
  *  adjust's a ship's location based on its direction vector
  ***************************************************/
 void moveSpaceShip(Spaceship * shipPtr, float movementScaleFactor){
-	unsigned int counter;
-	int numberWarningDingsPlaying = 0;
 	
 #ifndef ETERNAL_INVINCIBILITY
 //If NOT defined
@@ -320,13 +318,7 @@ void moveSpaceShip(Spaceship * shipPtr, float movementScaleFactor){
 	if(shipPtr->playerNumber > 0){
 		//Do max strength computations
 		if(shipPtr->strength == shipPtr->maxStrength*(1+OVERLOAD_FACTOR) ){
-			for(counter = 0; counter < NUMBER_CHANNELS; counter++){
-				if(channels[counter].soundID == WARNING_SOUND(shipPtr->playerNumber) && 
-						channels[counter].dataPosition != channels[counter].dataLength)
-					numberWarningDingsPlaying++; //count how many times the thrust sound effect is playing
-			}
-			if(numberWarningDingsPlaying < 1)
-				playSound(soundBuffer, WARNING_SOUND(shipPtr->playerNumber) );
+			playSoundIfFewerThan(soundBuffer, WARNING_SOUND(shipPtr->playerNumber), 1);
 		}
 	}
 	shipPtr->adjustCoordinate(movementScaleFactor);
@@ -1067,17 +1059,10 @@ HitData isShipHit(Spaceship *shipPtr, LinkedList<GameObject> *asteroids, LinkedL
  ***************************************************/
 void accelerateShip(Spaceship * player, float movementScaleFactor){
 	float acceleration = 0.625; //magnitude to increase the direction (velocity) vector
-	unsigned int counter, numberThrustSounds = 0;
 	
 	acceleration *= movementScaleFactor;
 	if(player->thrusting == true){
-		for(counter = 0; counter < NUMBER_CHANNELS; counter++){
-			if(channels[counter].soundID == THRUST_SOUND && 
-					channels[counter].dataPosition != channels[counter].dataLength)
-				numberThrustSounds++; //count how many times the thrust sound effect is playing
-		}
-		if(numberThrustSounds < numberOfPlayers)
-			playSound(soundBuffer, THRUST_SOUND);
+		playSoundIfFewerThan(soundBuffer, THRUST_SOUND, numberOfPlayers);
 
 		player->direction.x += acceleration*(player->strength/ (float) player->maxStrength)*cos(player->rotationAngle * PI/180);
 		player->direction.y += acceleration*(player->strength/ (float) player->maxStrength)*sin(player->rotationAngle * PI/180);
