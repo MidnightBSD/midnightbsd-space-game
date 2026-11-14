@@ -88,6 +88,10 @@ if(BUILD_TESTING)
     target_link_libraries(platform_tests SDL2::SDL2)
     add_test(NAME platform_tests COMMAND platform_tests)
 
+    add_executable(starfield_tests tests/StarfieldTests.cpp)
+    target_include_directories(starfield_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME starfield_tests COMMAND starfield_tests)
+
     add_executable(core_context_smoke EXCLUDE_FROM_ALL
         tests/CoreContextSmoke.cpp Platform.cpp Renderer.cpp Starfield.cpp UiText.cpp
         GameObject.cpp Asteroid.cpp Shot.cpp Kerblooie.cpp Spaceship.cpp Crystal.cpp)
