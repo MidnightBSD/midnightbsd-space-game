@@ -501,8 +501,11 @@ void titleHandleKeyboard(unsigned char keypressed, int x, int y){
 				newScore.name[nameLength - 1] = '\0';
 		}
 		else{
-			if(strlen(newScore.name) < 31) //this is the maximum length of a name
-				sprintf(newScore.name, "%s%c",newScore.name, keypressed);
+			size_t nameLength = strlen(newScore.name);
+			if(nameLength < 31) { //this is the maximum length of a name
+				newScore.name[nameLength] = keypressed;
+				newScore.name[nameLength + 1] = '\0';
+			}
 			else
 				titleHandleKeyboard(13,0,0); //press return for them!
 		}
