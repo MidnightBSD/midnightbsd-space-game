@@ -496,7 +496,9 @@ void titleHandleKeyboard(unsigned char keypressed, int x, int y){
 		}
 		else if (keypressed == 8 || keypressed == 127){ //Delete is a 127, not an 8. Don't ask me why.
 			//Make the previous character into the terminator. This removes it from the string.
-			newScore.name[strlen(newScore.name) - 1] = '\0';
+			size_t nameLength = strlen(newScore.name);
+			if(nameLength > 0)
+				newScore.name[nameLength - 1] = '\0';
 		}
 		else{
 			if(strlen(newScore.name) < 31) //this is the maximum length of a name
