@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 
+#include <algorithm>
 #include <array>
 
 void Spaceship::drawCore(float x, float y) const {
@@ -32,12 +33,40 @@ void Spaceship::drawCore(float x, float y) const {
         renderer->triangles(thrust);
     }
     const RenderColor shipColor{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, 1.0F};
-    const auto nose = point(radius, 0, shipColor);
-    const auto port = point(radius * cos(5 * PI / 6), radius * sin(5 * PI / 6), shipColor);
-    const auto center = point(radius * 3 / 5 * cos(PI), radius * 3 / 5 * sin(PI), shipColor);
-    const auto starboard = point(radius * cos(7 * PI / 6), radius * sin(7 * PI / 6), shipColor);
+    const auto shade = [&](float factor, float alpha = 1.0F) {
+        return RenderColor{std::clamp(shipColor.red * factor, 0.0F, 1.0F),
+                           std::clamp(shipColor.green * factor, 0.0F, 1.0F),
+                           std::clamp(shipColor.blue * factor, 0.0F, 1.0F), alpha};
+    };
+    const auto nose = point(radius, 0, shade(1.15F));
+    const auto port = point(radius * cos(5 * PI / 6), radius * sin(5 * PI / 6), shade(0.72F));
+    const auto center = point(radius * 3 / 5 * cos(PI), radius * 3 / 5 * sin(PI), shade(0.38F));
+    const auto starboard = point(radius * cos(7 * PI / 6), radius * sin(7 * PI / 6), shade(0.88F));
     const std::array<RenderVertex, 6> hull = {nose, port, center, nose, center, starboard};
     renderer->triangles(hull);
+
+    const RenderColor panel = shade(1.35F, 0.42F);
+    const std::array<RenderVertex, 12> inlays = {
+        point(radius * 0.08F, radius * 0.12F, panel), point(radius * 0.55F, radius * 0.17F, panel), point(radius * 0.18F, radius * 0.24F, panel),
+        point(radius * 0.08F, radius * 0.12F, panel), point(radius * 0.18F, radius * 0.24F, panel), point(radius * -0.22F, radius * 0.42F, panel),
+        point(radius * 0.08F, radius * -0.12F, panel), point(radius * 0.18F, radius * -0.24F, panel), point(radius * 0.55F, radius * -0.17F, panel),
+        point(radius * 0.08F, radius * -0.12F, panel), point(radius * -0.22F, radius * -0.42F, panel), point(radius * 0.18F, radius * -0.24F, panel),
+    };
+    renderer->triangles(inlays);
+
+    const RenderColor canopy{0.22F, 0.75F, 1.0F, 0.82F};
+    const std::array<RenderVertex, 6> cockpit = {
+        point(radius * 0.14F, radius * 0.18F, canopy), point(radius * 0.14F, radius * -0.18F, canopy), point(radius * 0.58F, 0.0F, canopy),
+        point(radius * -0.16F, radius * 0.10F, shade(0.20F)), point(radius * -0.16F, radius * -0.10F, shade(0.20F)), point(radius * 0.14F, 0.0F, shade(0.20F)),
+    };
+    renderer->triangles(cockpit);
+
+    const RenderColor nozzle{0.08F, 0.11F, 0.15F, 1.0F};
+    const std::array<RenderVertex, 6> engines = {
+        point(radius * -0.42F, radius * 0.24F, nozzle), point(radius * -0.72F, radius * 0.18F, nozzle), point(radius * -0.60F, radius * 0.06F, nozzle),
+        point(radius * -0.42F, radius * -0.24F, nozzle), point(radius * -0.60F, radius * -0.06F, nozzle), point(radius * -0.72F, radius * -0.18F, nozzle),
+    };
+    renderer->triangles(engines);
 
     const bool overloaded = playerNumber > 0 && strength > maxStrength;
     if (drawShieldsTimeToLive > 0 || overloaded) {
