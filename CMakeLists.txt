@@ -44,4 +44,4 @@ include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} ${SDL_INCLUDE_
 
 add_executable(midnightbsd_space_game ${SOURCE_FILES})
 
-target_link_libraries(midnightbsd_space_game SDL ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${SDL_LIBRARIES} )
+target_link_libraries(midnightbsd_space_game ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${SDL_LIBRARIES} )
