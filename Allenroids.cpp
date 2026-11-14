@@ -814,8 +814,10 @@ void findShotCollisions(LinkedList<GameObject> *shots){
 	Iterator<GameObject> shotListIterator(shots);
 	shotToTest = static_cast<Shot *>(shotListIterator.nextObject());
 	while(shotListIterator.atEnd() == false){
-		if(shotToTest->impacted == false)
-			isShotHitByShots(shotToTest, new Iterator<GameObject>(shots, shotListIterator.getCurrentNode()) ); //only tests this shot against shots that haven't been tested yet
+		if(shotToTest->impacted == false){
+			Iterator<GameObject> shotComparisonIterator(shots, shotListIterator.getCurrentNode());
+			isShotHitByShots(shotToTest, &shotComparisonIterator); //only tests this shot against shots that haven't been tested yet
+		}
 		if(shotToTest->impacted == true){
 			playSound(soundBuffer, SHOT_TUNK_SOUND);
 			spawnKerblooie(KERBLOOIE_INFINITESIMAL, shotToTest->radius, shotToTest->color, shotToTest->position, shotToTest->direction, &kerblooieList);
