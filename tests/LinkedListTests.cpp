@@ -5,6 +5,7 @@
 
 struct OwnedValue {
     static int destroyed;
+    int id = 0;
 
     ~OwnedValue() {
         ++destroyed;
@@ -27,14 +28,21 @@ int main() {
         LinkedList<OwnedValue> list;
         assert(list.isEmpty());
 
-        list.insertObject(new OwnedValue);
-        list.insertObject(new OwnedValue);
+        auto *first = new OwnedValue;
+        first->id = 1;
+        auto *second = new OwnedValue;
+        second->id = 2;
+        list.insertObject(first);
+        list.insertObject(second);
         assert(!list.isEmpty());
 
         Iterator<OwnedValue> iterator(&list);
-        assert(iterator.nextObject() != nullptr);
+        assert(iterator.nextObject()->id == 2);
         iterator.removeCurrentPosition();
         assert(!list.isEmpty());
+
+        iterator.rewind();
+        assert(iterator.nextObject()->id == 1);
 
         list.clearList();
         assert(list.isEmpty());

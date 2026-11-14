@@ -24,5 +24,19 @@ int main() {
     nearby.position = {16.0F, 0.0F};
     assert(!asGameObject.intersectsWith(&nearby));
     assert(ship.radius == 20.0F);
+
+    TestObject wrappingObject;
+    wrappingObject.position = {-1.0F, FRAMEHEIGHT + 1.0F};
+    wrappingObject.adjustCoordinate(0.0F);
+    assert(wrappingObject.position.x == FRAMEWIDTH - 1.0F);
+    assert(wrappingObject.position.y == 1.0F);
+
+    TestObject leftEdge;
+    leftEdge.position = {1.0F, 200.0F};
+    leftEdge.radius = 5.0F;
+    TestObject rightEdge;
+    rightEdge.position = {FRAMEWIDTH - 2.0F, 200.0F};
+    rightEdge.radius = 5.0F;
+    assert(leftEdge.intersectsWith(&rightEdge));
     return 0;
 }

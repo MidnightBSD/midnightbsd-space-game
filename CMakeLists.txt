@@ -63,4 +63,12 @@ if(BUILD_TESTING)
     target_include_directories(game_object_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(game_object_tests ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
     add_test(NAME game_object_tests COMMAND game_object_tests)
+
+    add_executable(standard_elements_tests tests/StandardElementsTests.cpp StandardElements.cpp)
+    target_include_directories(standard_elements_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME standard_elements_tests COMMAND standard_elements_tests)
+
+    add_executable(ui_text_tests tests/UiTextTests.cpp)
+    target_include_directories(ui_text_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME ui_text_tests COMMAND ui_text_tests)
 endif()
