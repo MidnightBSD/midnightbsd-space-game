@@ -203,6 +203,8 @@ void display(void) {
 	if(startingNewLevel == true && paused == false){ //"Between" levels
 		//Print the new level number
 		levelText = (char *) calloc( strlen( "LEVEL ")+levelNumber+1, sizeof(char) );
+		if(levelText == NULL)
+			return;
 		sprintf(levelText, "LEVEL %d", levelNumber+1);
 		glColor4ub(128, 0, 64,192); //Maroon with opacity
 		glLineWidth(4.0);
@@ -1415,6 +1417,9 @@ void startLevel(int level) {
 	unsigned int numberBadGuys; //how many will haunt us this level
 	int partitionWidth;
 	unsigned int counter, scheduleCounter;
+	int *newAsteroidReleaseSchedule = NULL;
+	unsigned int *newCrystalReleaseSchedule[CRYSTAL_NUMBER_OF_SPECIMENS] = {NULL};
+	int *newBadGuySchedule = NULL;
 	
 	#ifdef RANDOM_ON
 		srand( time(NULL) );
@@ -1467,13 +1472,15 @@ void startLevel(int level) {
 		 */
 		totalNumberLargeAsteroids = level+2;
 		numberUnsmallAsteroids = totalNumberLargeAsteroids; //start out with at least that many unsmalls
-		free(asteroidReleaseSchedule);
-		asteroidReleaseSchedule = (int *)calloc(totalNumberLargeAsteroids, sizeof(int) ); //will hold the number of smaller asteroids to be produced from each *large* one
-		for(counter = 0; counter < totalNumberLargeAsteroids; counter++){ //spawn large asteroids and ordain their number of divisions
-			Asteroid *newAsteroid = spawnAsteroid(ASTEROID_BIG,rand() % FRAMEWIDTH, rand() % FRAMEHEIGHT , zeroVector);
-			asteroidList.insertObject(newAsteroid);
-			asteroidReleaseSchedule[counter] = rand()%2+2; //either 2 or three new asteroids to be released
-			numberUnsmallAsteroids += asteroidReleaseSchedule[counter]; //the number of unsmalls has now been increased by the random number just generated
+		newAsteroidReleaseSchedule = (int *)calloc(totalNumberLargeAsteroids, sizeof(int) ); //will hold the number of smaller asteroids to be produced from each *large* one
+		if(newAsteroidReleaseSchedule == NULL){
+			firstCall = true;
+			startingNewLevel = false;
+			return;
+		}
+		for(counter = 0; counter < totalNumberLargeAsteroids; counter++){
+			newAsteroidReleaseSchedule[counter] = rand()%2+2; //either 2 or three new asteroids to be released
+			numberUnsmallAsteroids += newAsteroidReleaseSchedule[counter]; //the number of unsmalls has now been increased by the random number just generated
 		}
 		unsmallAsteroidsDestroyedToDate = 0;
 		bigAsteroidsDestroyedToDate = 0; //keep track of these as the array index for the schedule!
@@ -1486,28 +1493,36 @@ void startLevel(int level) {
 		numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] = level*3/4 + ( rand()%level )/2;
 		
 		for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++){
-			free(crystalReleaseSchedule[counter]);
-			crystalReleaseSchedule[counter] = (unsigned int *)calloc(numberCrystalsToRelease[counter],sizeof(int));
+			unsigned int scheduleLength = numberCrystalsToRelease[counter] == 0 ? 1 : numberCrystalsToRelease[counter];
+			newCrystalReleaseSchedule[counter] = (unsigned int *)calloc(scheduleLength, sizeof(int));
+			if(newCrystalReleaseSchedule[counter] == NULL){
+				free(newAsteroidReleaseSchedule);
+				for(scheduleCounter = 0; scheduleCounter < counter; scheduleCounter++)
+					free(newCrystalReleaseSchedule[scheduleCounter]);
+				firstCall = true;
+				startingNewLevel = false;
+				return;
+			}
+			if(numberCrystalsToRelease[counter] == 0){
+				newCrystalReleaseSchedule[counter][0] = (unsigned int)-1;
+				continue;
+			}
 			for(scheduleCounter = 0; scheduleCounter < numberCrystalsToRelease[counter]; scheduleCounter++){
 				do{
-					crystalReleaseSchedule[counter][scheduleCounter] = rand()%numberUnsmallAsteroids; //try a random number somewhere amongst the unsmall explosions
-				}while( scheduleCounter * numberUnsmallAsteroids / numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] >= crystalReleaseSchedule[counter][scheduleCounter] || //these two lines specify the bracket conditions (lower and upper), which are vital to ensuring the crystals are *evenly* distributed
-						crystalReleaseSchedule[counter][scheduleCounter] > (scheduleCounter+1)*numberUnsmallAsteroids/numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] //value must be within the desired bracket
+					newCrystalReleaseSchedule[counter][scheduleCounter] = rand()%numberUnsmallAsteroids; //try a random number somewhere amongst the unsmall explosions
+				}while( scheduleCounter * numberUnsmallAsteroids / numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] >= newCrystalReleaseSchedule[counter][scheduleCounter] || //these two lines specify the bracket conditions (lower and upper), which are vital to ensuring the crystals are *evenly* distributed
+						newCrystalReleaseSchedule[counter][scheduleCounter] > (scheduleCounter+1)*numberUnsmallAsteroids/numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] //value must be within the desired bracket
 						|| (
 							(scheduleCounter > 0) ? //conditional operator: if(scheduleCounter>0) then (blah) else true
-								crystalReleaseSchedule[counter][scheduleCounter] <= crystalReleaseSchedule[counter][scheduleCounter-1] //make sure that we *keep looping* if the computer hasn't generated a number greater than the previous one it came up with
+								newCrystalReleaseSchedule[counter][scheduleCounter] <= newCrystalReleaseSchedule[counter][scheduleCounter-1] //make sure that we *keep looping* if the computer hasn't generated a number greater than the previous one it came up with
 							:
 								false //this only happens if we are still on the very first scheduled crystal, on which we don't need to consider the previous line
 							)
 					); //loop while conditions are wrong
-				if(numberCrystalsToRelease[counter] == 0)
-					//crystalReleaseSchedule[counter][scheduleCounter] = -1; //when there are no crystals to create, one schedule slot gets calloced and filled with 0 anyway. Fill it with a clearly invalid number instead.
-					crystalReleaseSchedule[counter][scheduleCounter] = 0; //when there are no crystals to create, one schedule slot gets calloced and filled with 0 anyway. Fill it with a clearly invalid number instead.
 				#ifdef DEBUG_CRYSTALS
-					printf("%d, ",crystalReleaseSchedule[counter][scheduleCounter]);
+					printf("%d, ",newCrystalReleaseSchedule[counter][scheduleCounter]);
 				#endif
 			}
-			crystalsReleased[counter] = 0;
 			#ifdef DEBUG_CRYSTALS
 				printf("\nCyrstals (%d) to be released: %d\n", counter, numberCrystalsToRelease[counter]);
 			#endif
@@ -1518,22 +1533,52 @@ void startLevel(int level) {
 		 *	Don't make a lot of them!
 		 *	They are scheduled by the index of an unsmall asteroid destruction
 		 */
-		free(badGuySchedule);
 		if(level > 1)
 			numberBadGuys = level/5 + rand()%2;
 		else
 			numberBadGuys = 0; //first level is easy
 		if(numberBadGuys > 0){
 			partitionWidth = (int) ceil( (float)numberUnsmallAsteroids/numberBadGuys);
-			badGuySchedule = (int*)calloc(numberBadGuys, sizeof(int) );
+			newBadGuySchedule = (int*)calloc(numberBadGuys, sizeof(int) );
+			if(newBadGuySchedule == NULL){
+				free(newAsteroidReleaseSchedule);
+				for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++)
+					free(newCrystalReleaseSchedule[counter]);
+				firstCall = true;
+				startingNewLevel = false;
+				return;
+			}
 			for(scheduleCounter = 0; scheduleCounter < numberBadGuys; scheduleCounter++){
-				badGuySchedule[scheduleCounter] = 1 + rand()%partitionWidth + scheduleCounter*partitionWidth;
+				newBadGuySchedule[scheduleCounter] = 1 + rand()%partitionWidth + scheduleCounter*partitionWidth;
 				//printf("%d,", badGuySchedule[scheduleCounter]);
 			}
 		}
 		else{
-			badGuySchedule = (int*)calloc(1, sizeof(int) );
-			badGuySchedule[0] = -1; //bogus value prevents it from ever being considered
+			newBadGuySchedule = (int*)calloc(1, sizeof(int) );
+			if(newBadGuySchedule != NULL)
+				newBadGuySchedule[0] = -1; //bogus value prevents it from ever being considered
+		}
+		if(newBadGuySchedule == NULL){
+			free(newAsteroidReleaseSchedule);
+			for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++)
+				free(newCrystalReleaseSchedule[counter]);
+			firstCall = true;
+			startingNewLevel = false;
+			return;
+		}
+
+		free(asteroidReleaseSchedule);
+		asteroidReleaseSchedule = newAsteroidReleaseSchedule;
+		for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++){
+			free(crystalReleaseSchedule[counter]);
+			crystalReleaseSchedule[counter] = newCrystalReleaseSchedule[counter];
+			crystalsReleased[counter] = 0;
+		}
+		free(badGuySchedule);
+		badGuySchedule = newBadGuySchedule;
+		for(counter = 0; counter < totalNumberLargeAsteroids; counter++){
+			Asteroid *newAsteroid = spawnAsteroid(ASTEROID_BIG,rand() % FRAMEWIDTH, rand() % FRAMEHEIGHT , zeroVector);
+			asteroidList.insertObject(newAsteroid);
 		}
 		badGuysSummonedToDate = 0;
 		
