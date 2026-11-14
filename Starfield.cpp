@@ -1,160 +1,39 @@
-//==============================================================================
-//
-// File:		Starfield.cpp
-//
-// Purpose:		Generates and draws a random starfield for the background.
-//
-// Modified:	04/07/2009 Allen Smith. Creation Date.
-//
-//==============================================================================
 #include "Starfield.h"
+
 #include "GameRandom.h"
+#include "Renderer.h"
 
-#include <cstdlib>
+#include <vector>
 
-
-//========== Starfield =========================================================
-//
-// Purpose:		Constructor.
-//
-//==============================================================================
-Starfield::Starfield()
-{
-	displayListTag	= 0;
-	starCount		= 0;
+void Starfield::SetStarCount(unsigned count) {
+    starCount = count;
+    GenerateRandomStarfield();
 }
 
-
-//========== ~Starfield ========================================================
-//
-// Purpose:		Destructor.
-//
-//==============================================================================
-Starfield::~Starfield()
-{
-	DestroyDisplayList();
+void Starfield::Draw() {
+    auto *renderer = Renderer::current();
+    if (renderer == nullptr) return;
+    std::vector<RenderVertex> vertices;
+    vertices.reserve(starCount * 6);
+    for (const Star &star : stars) {
+        const RenderColor color{star.whiteness, star.whiteness, star.whiteness, 1.0F};
+        const float left = star.location.x;
+        const float bottom = star.location.y;
+        const float right = left + star.size;
+        const float top = bottom + star.size;
+        vertices.insert(vertices.end(), {{left, bottom, 0.0F, color}, {right, bottom, 0.0F, color},
+            {right, top, 0.0F, color}, {left, bottom, 0.0F, color}, {right, top, 0.0F, color},
+            {left, top, 0.0F, color}});
+    }
+    renderer->triangles(vertices);
 }
 
-
-//========== SetStarCount ======================================================
-//
-// Purpose:		Regenerates a starfield with the specified number of stars.
-//
-//==============================================================================
-void Starfield::SetStarCount(unsigned starCountIn)
-{
-	this->starCount = starCountIn;
-	
-	GenerateRandomStarfield();
-	OptimizeDrawing();
-	
-}//end SetStarCount
-
-
-//========== Draw ==============================================================
-//
-// Purpose:		Paints the starfield onscreen.
-//
-//==============================================================================
-void Starfield::Draw()
-{
-	unsigned int    counter     = 0;
-	Star			currentStar;
-	
-	if(this->displayListTag == 0)
-	{
-		// Immediate-mode drawing
-		glBegin(GL_QUADS);
-		{
-			for(counter = 0; counter < this->starCount; counter++)
-			{
-				currentStar	= this->stars.at(counter);
-			
-				glColor3f(currentStar.whiteness, currentStar.whiteness, currentStar.whiteness);
-				
-				glVertex2f(currentStar.location.x					, currentStar.location.y    );
-				glVertex2f(currentStar.location.x + currentStar.size, currentStar.location.y    );
-				glVertex2f(currentStar.location.x + currentStar.size, currentStar.location.y + currentStar.size);
-				glVertex2f(currentStar.location.x					, currentStar.location.y + currentStar.size);
-			}
-		}
-		glEnd();
-	}
-	else
-	{
-		// Optimize drawing
-		glCallList(this->displayListTag);
-	}	
-	
-}//end Draw
-
-
-//========== GenerateRandomStarfield ===========================================
-//
-// Purpose:		Creates a pretty starfield for the background
-//
-//==============================================================================
-void Starfield::GenerateRandomStarfield()
-{
-	unsigned	counter		= 0;
-	Star		currentStar;
-	
-	// Get rid of the old stars
-	this->stars.clear();
-	
-	// Make new ones
-	for(counter = 0; counter < this->starCount; counter++)
-	{
-		currentStar.location.x	= GameRandom::integer(0, FRAMEWIDTH - 1);
-		currentStar.location.y	= GameRandom::integer(0, FRAMEHEIGHT - 1);
-		
-		currentStar.whiteness	= GameRandom::real(0.0F, 1.0F);
-		currentStar.size		= GameRandom::real(0.25F, 1.0F);
-		
-		this->stars.push_back(currentStar);
-	}
-	
-}//end GenerateRandomStarfield
-
-
-//========== OptimizeDrawing ===================================================
-//
-// Purpose:		Stores the drawing into a display list, so that it happens very 
-//				quickly next time! 
-//
-//==============================================================================
-void Starfield::OptimizeDrawing()
-{
-	GLuint	newList	= 0;
-	
-	// clear the current display list.
-	DestroyDisplayList();
-	
-	// generate a new one
-	newList	= glGenLists(1);
-	glNewList(newList, GL_COMPILE);
-	{
-		Draw();
-	}
-	glEndList();
-	
-	this->displayListTag = newList;
-	
-}//end OptimizeDrawing
-
-
-//========== DestroyDisplayList ================================================
-//
-// Purpose:		Eliminates the fast optimized display list.
-//
-//==============================================================================
-void Starfield::DestroyDisplayList()
-{
-	if(this->displayListTag != 0)
-	{
-		glDeleteLists(this->displayListTag, 1);
-		this->displayListTag = 0;
-	}
-	
-}//end DestroyDisplayList
-
+void Starfield::GenerateRandomStarfield() {
+    stars.clear();
+    stars.reserve(starCount);
+    for (unsigned index = 0; index < starCount; ++index) {
+        stars.push_back({{static_cast<float>(GameRandom::integer(0, FRAMEWIDTH - 1)),
+                          static_cast<float>(GameRandom::integer(0, FRAMEHEIGHT - 1))},
+                         GameRandom::real(0.0F, 1.0F), GameRandom::real(0.25F, 1.0F)});
+    }
+}

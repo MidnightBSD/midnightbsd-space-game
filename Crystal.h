@@ -33,14 +33,10 @@ class Crystal : public GameObject {
 		GLubyte color[4]{}; //original color and fade percentage, interpreted as alpha value
 		HitData status{}; //filled with CRYSTAL_STATUS
 
-	//functions
 		Crystal() = default;
-		void draw() const override;
-	private:
-		void drawCrystalArm(float, float) const;
-		void drawHalfSphere(float, int, int) const;
 
-
+	protected:
+		void drawCore(float x, float y) const override;
 };
 
 #endif

@@ -36,21 +36,12 @@ struct Star
 class Starfield
 {
 	public:
-							Starfield();
-		virtual				~Starfield();
-	
-		virtual	void		SetStarCount(unsigned starCount);
-
-		virtual	void		Draw();
-		
-	protected:
-		virtual	void		GenerateRandomStarfield();
-		virtual	void		OptimizeDrawing();
-		virtual	void		DestroyDisplayList();
+		void SetStarCount(unsigned starCount);
+		void Draw();
 
 	private:
-		GLuint				displayListTag;
-		unsigned			starCount;
+		void GenerateRandomStarfield();
+		unsigned starCount{};
 		std::vector<Star>	stars;
 };
 

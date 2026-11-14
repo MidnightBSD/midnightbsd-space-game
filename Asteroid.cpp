@@ -8,6 +8,7 @@
 
 #include "Asteroid.h"
 #include "GameRandom.h"
+#include "Renderer.h"
 #include <stdlib.h>
 
 const int Asteroid::asteroidSizes[3] = {10, 20, 30};
@@ -40,20 +41,7 @@ Asteroid::Asteroid(int sizeCode, float positionX, float positionY){
 }
 
 
-/****************************************************
- * draw
- *  generically paints the asteroid at the origin
- ***************************************************/
-void Asteroid::draw() const{
-	float angle;
-	static int numberVertices = 7;
-	
-	glRotatef(rotationAngle, 0,0,1);
-	glColor3ubv(color);
-	glBegin(GL_TRIANGLE_FAN);
-		for(angle = 0; angle < 2*PI; angle += 2*PI/numberVertices){
-			glVertex2f( radius*cos(angle), 
-						radius*sin(angle) );
-		}
-	glEnd();
+void Asteroid::drawCore(float x, float y) const {
+	Renderer::current()->filledCircle(x, y, radius, static_cast<float>(rotationAngle),
+		{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, 1.0F}, 7);
 }

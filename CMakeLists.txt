@@ -25,6 +25,12 @@ set(SOURCE_FILES
     Node.h
     Player.cpp
     Player.h
+    Platform.cpp
+    Platform.h
+    Renderer.cpp
+    Renderer.h
+    UiText.cpp
+    UiText.h
     Shot.cpp
     Shot.h
     sound.cpp
@@ -39,14 +45,14 @@ set(SOURCE_FILES
     TitleScreen.h)
 
 find_package(OpenGL REQUIRED COMPONENTS OpenGL)
-find_package(GLUT REQUIRED)
 find_package(SDL2 REQUIRED CONFIG)
+find_package(SDL2_ttf REQUIRED CONFIG)
 
-include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} )
+include_directories(${OPENGL_INCLUDE_DIRS})
 
 add_executable(midnightbsd_space_game ${SOURCE_FILES})
 
-target_link_libraries(midnightbsd_space_game ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} SDL2::SDL2)
+target_link_libraries(midnightbsd_space_game OpenGL::OpenGL SDL2::SDL2 SDL2_ttf::SDL2_ttf)
 
 include(CTest)
 
@@ -59,9 +65,9 @@ if(BUILD_TESTING)
     target_include_directories(game_random_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME game_random_tests COMMAND game_random_tests)
 
-    add_executable(game_object_tests tests/GameObjectTests.cpp GameObject.cpp Spaceship.cpp)
+    add_executable(game_object_tests tests/GameObjectTests.cpp GameObject.cpp Spaceship.cpp Renderer.cpp)
     target_include_directories(game_object_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_link_libraries(game_object_tests ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
+    target_link_libraries(game_object_tests OpenGL::OpenGL SDL2::SDL2)
     add_test(NAME game_object_tests COMMAND game_object_tests)
 
     add_executable(standard_elements_tests tests/StandardElementsTests.cpp StandardElements.cpp)
@@ -76,4 +82,15 @@ if(BUILD_TESTING)
     target_include_directories(sound_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(sound_tests SDL2::SDL2)
     add_test(NAME sound_tests COMMAND sound_tests)
+
+    add_executable(platform_tests tests/PlatformTests.cpp Platform.cpp)
+    target_include_directories(platform_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(platform_tests SDL2::SDL2)
+    add_test(NAME platform_tests COMMAND platform_tests)
+
+    add_executable(core_context_smoke EXCLUDE_FROM_ALL
+        tests/CoreContextSmoke.cpp Platform.cpp Renderer.cpp Starfield.cpp UiText.cpp
+        GameObject.cpp Asteroid.cpp Shot.cpp Kerblooie.cpp Spaceship.cpp Crystal.cpp)
+    target_include_directories(core_context_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(core_context_smoke OpenGL::OpenGL SDL2::SDL2 SDL2_ttf::SDL2_ttf)
 endif()

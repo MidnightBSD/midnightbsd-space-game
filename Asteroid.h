@@ -31,7 +31,9 @@ class Asteroid : public GameObject {
 	
 	//functions
 		Asteroid(int, float, float);
-		void draw() const override;
+
+	protected:
+		void drawCore(float x, float y) const override;
 };
 
 

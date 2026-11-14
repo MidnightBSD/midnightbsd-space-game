@@ -36,10 +36,10 @@ class Spaceship : public GameObject {
 
 	//functions
 		Spaceship() = default;
-		void draw() const override;
 		void drawHealthMeter(int , int hudHeight, bool growsRight) const;
 
 	protected:
+		void drawCore(float x, float y) const override;
 		float collisionRadius() const override;
 };
 

@@ -1,565 +1,295 @@
-/*
- *  Title Screen.c
- *  Asteroids
- *
- *  Created by Allen Smith on Mon Oct 21 2002.
- *
- */
-
 #include "Allenroids.h"
-#include "TitleScreen.h"
 #include "ConfigureScreen.h"
+#include "Platform.h"
+#include "Renderer.h"
+#include "TitleScreen.h"
+#include "UiText.h"
 
-/*****Global Variables*****/
+#include <cstdio>
+#include <cstring>
+
 extern GLubyte playerColors[][3];
-
-std::array<MyButton, 3> titleButtons;
-extern int buttonBeingPressed; //defined in Configure Screen
+extern int buttonBeingPressed;
 extern int buttonWidth;
 extern int buttonHeight;
-
-//Modes
-boolean enterHighScoredMode = false;
-
-Score highscores[NUMBER_HIGH_SCORES];
-Score newScore; //temporary holding cell for a new high score
-short indexNewScore; //the index of the new score
-short playerNumberWithScore;
-
-//Players
 extern short numberOfPlayers;
 extern Player playerObjects[MAX_NUMBER_PLAYERS];
-extern int playerKeys[MAX_NUMBER_PLAYERS][5];
+extern boolean paused;
 
+std::array<MyButton, 3> titleButtons;
+boolean enterHighScoredMode = false;
+Score highscores[NUMBER_HIGH_SCORES];
+Score newScore;
+short indexNewScore;
+short playerNumberWithScore;
 
-
-/****************************************************
- * titleInit
- *  set up the title screen
- ***************************************************/
-void titleInit(){
-	//GLUT function setup
-	glutKeyboardFunc(titleHandleKeyboard);
-	glutIgnoreKeyRepeat(true);
-	glutMouseFunc(titleHandleMouse);
-	glutDisplayFunc(titleDisplay);
-	glutReshapeFunc(reshape); //OS 9 GLUT crashes with this function.
-	glutIdleFunc(NULL); //stop idle loop leftover from a previous game
-
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK); //cull faces produced from clockwise vertices
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glClearColor(0,0,0, 0.5);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glShadeModel(GL_SMOOTH);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_POINT_SMOOTH);
-	glEnable(GL_POLYGON_SMOOTH);
-//	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(0, FRAMEWIDTH, 0, FRAMEHEIGHT);
-	
-	readHighScores();
-	readConfiguration();
-	
-	spawnStarfield();
-	buttonWidth = 128;
-	buttonHeight = 32;
-		
-	setButtonText(titleButtons[0], "One-player Game");
-	titleButtons[0].position.x = FRAMEWIDTH*1/4;
-	titleButtons[0].position.y = FRAMEHEIGHT*3/16;
-		titleButtons[0].color[0] = playerColors[P(1)][0]; //Note:
-		titleButtons[0].color[1] = playerColors[P(1)][1]; //the player objects haven't been initialized yet
-		titleButtons[0].color[2] = playerColors[P(1)][2]; //so you can't get the colors from there!
-		titleButtons[0].color[3] = 128; //50%
-	
-	setButtonText(titleButtons[1], "Two-player Game");
-	titleButtons[1].position.x = FRAMEWIDTH*1/2;
-	titleButtons[1].position.y = FRAMEHEIGHT*3/16;
-		titleButtons[1].color[0] = playerColors[P(2)][0];
-		titleButtons[1].color[1] = playerColors[P(2)][1];
-		titleButtons[1].color[2] = playerColors[P(2)][2];
-		titleButtons[1].color[3] = 128; //50%
-	
-	setButtonText(titleButtons[2], "Configure");
-	titleButtons[2].position.x = FRAMEWIDTH*3/4;
-	titleButtons[2].position.y = FRAMEHEIGHT*3/16;
-		titleButtons[2].color[0] = 255;
-		titleButtons[2].color[1] = 0;
-		titleButtons[2].color[2] = 0;
-		titleButtons[2].color[3] = 128; //50% transparency
-	
-
+namespace {
+RenderColor colorFromBytes(const GLubyte color[4]) {
+    return {color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, color[3] / 255.0F};
 }
 
-/****************************************************
- * titleDisplay
- *  paints all the title elements
- ***************************************************/
-void titleDisplay(void) {
-	glClear(GL_COLOR_BUFFER_BIT);
-	
-	drawStarfield(); //in asteroids.c
-	printTitle();
-	printHighScores();
-	if(enterHighScoredMode == false)
-		configurePrintButtons(titleButtons.data(), titleButtons.size(), GL_RENDER, 0);
-	//	printButtons(GL_RENDER);
-	glutSwapBuffers();
-	
+void drawCentered(UiText &text, std::string_view value, float centerX, float y, int size,
+                  FontFace face, RenderColor color) {
+    text.draw(value, centerX - text.width(value, size, face) / 2.0F, y, size, face, color);
 }
 
+void drawButton(const MyButton &button) {
+    auto *renderer = Renderer::current();
+    auto *text = UiText::current();
+    if (renderer == nullptr || text == nullptr) return;
+    const std::string_view label(button.text.data());
+    drawCentered(*text, label, button.position.x, button.position.y - 6.0F, 16,
+                 FontFace::Regular, {1.0F, 1.0F, 1.0F, 1.0F});
+    renderer->filledRectangle(button.position.x - buttonWidth / 2.0F,
+                              button.position.y - buttonHeight / 2.0F,
+                              static_cast<float>(buttonWidth), static_cast<float>(buttonHeight),
+                              colorFromBytes(button.color.data()));
+}
 
-/****************************************************
- * printTitle
- *  writes the word "Allenroids" in large letters at the top
- ***************************************************/
+void drawHighScores() {
+    auto *text = UiText::current();
+    auto *renderer = Renderer::current();
+    if (text == nullptr || renderer == nullptr) return;
+    constexpr RenderColor white{1.0F, 1.0F, 1.0F, 1.0F};
+    const std::string heading = enterHighScoredMode
+        ? "Player " + std::to_string(playerNumberWithScore) + " earned a new high score!"
+        : "High Scores";
+    drawCentered(*text, heading, FRAMEWIDTH / 2.0F, FRAMEHEIGHT - 144.0F, 24, FontFace::Bold, white);
+    constexpr float left = 80.0F;
+    constexpr float nameColumn = left + 30.0F;
+    constexpr float levelColumn = 350.0F;
+    constexpr float scoreColumn = 425.0F;
+    constexpr float dateColumn = 505.0F;
+    text->draw("#", left, FRAMEHEIGHT - 180.0F, 13, FontFace::Bold, white);
+    text->draw("Name", nameColumn, FRAMEHEIGHT - 180.0F, 13, FontFace::Bold, white);
+    text->draw("Level", levelColumn, FRAMEHEIGHT - 180.0F, 13, FontFace::Bold, white);
+    text->draw("Score", scoreColumn, FRAMEHEIGHT - 180.0F, 13, FontFace::Bold, white);
+    text->draw("Date", dateColumn, FRAMEHEIGHT - 180.0F, 13, FontFace::Bold, white);
+    renderer->filledRectangle(left, FRAMEHEIGHT - 187.0F, 480.0F, 1.0F, white);
+    for (int index = 0; index < NUMBER_HIGH_SCORES; ++index) {
+        const bool entering = enterHighScoredMode && index == indexNewScore;
+        const Score &row = entering ? newScore : highscores[index];
+        const RenderColor color = entering ? RenderColor{1.0F, 0.0F, 0.0F, 1.0F} : white;
+        char rank[8]{};
+        char level[16]{};
+        char score[24]{};
+        char date[20]{};
+        std::snprintf(rank, sizeof(rank), "%d.", index + 1);
+        std::snprintf(level, sizeof(level), "%d", row.level);
+        std::snprintf(score, sizeof(score), "%d", row.score);
+        if (const std::tm *time = std::localtime(&row.date); time != nullptr && !entering)
+            std::strftime(date, sizeof(date), "%b. %d, %Y", time);
+        const std::string name = entering ? std::string(newScore.name) + "_" : row.name;
+        const float y = FRAMEHEIGHT - 207.0F - index * 14.0F;
+        text->draw(rank, left, y, 13, FontFace::Regular, color);
+        text->draw(name, nameColumn, y, 13, FontFace::Regular, color);
+        text->draw(level, levelColumn, y, 13, FontFace::Regular, color);
+        text->draw(score, scoreColumn, y, 13, FontFace::Regular, color);
+        if (!entering) text->draw(date, dateColumn, y, 13, FontFace::Regular, color);
+    }
+    if (!enterHighScoredMode) {
+        drawCentered(*text, "MidnightBSD Space Game " ALLENROIDS_VERSION
+                     ": This masterpiece brought to you by Allen M. Smith, 2002-" +
+                     std::to_string(ALLENROIDS_VERSION_DATE),
+                     FRAMEWIDTH / 2.0F, FRAMEHEIGHT / 32.0F, 11, FontFace::Regular, white);
+    }
+}
+
+void activateTitleButton(int button) {
+    switch (button) {
+    case 0: gameInit(1); break;
+    case 1: gameInit(2); break;
+    case 2: configureInit(); break;
+    default: break;
+    }
+}
+}
+
+void titleInit() {
+    setActiveScreen(ApplicationScreen::Title);
+    readHighScores();
+    readConfiguration();
+    spawnStarfield();
+    buttonWidth = 128;
+    buttonHeight = 32;
+    setButtonText(titleButtons[0], "One-player Game");
+    setButtonText(titleButtons[1], "Two-player Game");
+    setButtonText(titleButtons[2], "Configure");
+    for (std::size_t index = 0; index < titleButtons.size(); ++index) {
+        MyButton &button = titleButtons[index];
+        button.position = {FRAMEWIDTH * static_cast<float>(index + 1) / 4.0F, FRAMEHEIGHT * 3.0F / 16.0F};
+        button.color[0] = index < 2 ? playerColors[index][0] : 255;
+        button.color[1] = index < 2 ? playerColors[index][1] : 0;
+        button.color[2] = index < 2 ? playerColors[index][2] : 0;
+        button.color[3] = 128;
+    }
+}
+
+void titleDisplay() {
+    drawStarfield();
+    printTitle();
+    printHighScores();
+    if (!enterHighScoredMode) for (const MyButton &button : titleButtons) drawButton(button);
+}
+
 void printTitle() {
-	static const char gameTitle[] = "MidnightBSD Space Game";
-	unsigned int counter;
-	int stringWidth = 0;
-	float scaleFactor = 0.2; //20%
-	
-	glColor3ub(255,255,255);
-	glLineWidth(5.0);
-	//DO NOT LOAD A MATRIXMODE! It totally messes up the coordinate system.
-	glPushMatrix();
-	for(counter = 0; counter < strlen(gameTitle); counter++){
-		stringWidth += glutStrokeWidth( GLUT_STROKE_ROMAN , gameTitle[counter]);
-	}
-	glTranslatef( FRAMEWIDTH/2 - (stringWidth/2)*scaleFactor, FRAMEHEIGHT-64, 0);
-	glScalef(scaleFactor, scaleFactor, 0);
-	glRasterPos2i(0,0);
-	for(counter = 0; counter < strlen(gameTitle); counter++){
-		glutStrokeCharacter( GLUT_STROKE_ROMAN , gameTitle[counter]);
-	}
-	
-	glPopMatrix();
+    if (auto *text = UiText::current())
+        drawCentered(*text, "MidnightBSD Space Game", FRAMEWIDTH / 2.0F, FRAMEHEIGHT - 70.0F,
+                     34, FontFace::Bold, {1.0F, 1.0F, 1.0F, 1.0F});
 }
 
+void printHighScores() { drawHighScores(); }
 
-/****************************************************
- * printHighScores
- *  prints out the whole beautiful high score list
- ***************************************************/
-void printHighScores() {
-	char            mainTitle[36]           = "";
-	unsigned		stringLength			= 0;
-	float           stringWidth             = 0;
-	float			charWidth				= 0.0;
-	char            columnHeadings[72]      = "";
-	char            dateForScore[14]        = "";	//a textual version of the high score's date
-	char            highScoreString[128]    = "";
-	char            name[32]                = "";	// a temporary place to hold the name to print for the score
-	int             linePostion             = 0;	//in pixels; the distance from the top of the screen to render the current line of text.
-	float			highscoreLeftMargin		= 0;
-	unsigned int    counter                 = 0;
-	int             scoreIndex              = 0;	//counter for highScore array
-	float           scaleFactor             = 0.25;	//25%
-	
-	//--------------------------------------------------------------------------
-	// Print heading/instructions
-	
-	// This mode can be interactive!
-	if(enterHighScoredMode == false){
-		sprintf(mainTitle, "High Scores");
-		glColor3ub(255,255,255);
-	}
-	else{
-		sprintf(mainTitle, "Player %d earned a new high score!", playerNumberWithScore);
-		glColor3ubv(playerObjects[P(playerNumberWithScore)].getColors());
-	}
-	glLineWidth(2.0);
-	//DO NOT LOAD A MATRIXMODE! It totally messes up the coordinate system.
-	glPushMatrix();
-	{
-		for(counter = 0; counter < strlen(mainTitle); counter++){
-			stringWidth += glutStrokeWidth( GLUT_STROKE_ROMAN , mainTitle[counter]); //since this is a variable-width font
-		}
-		
-		linePostion = 128;
-		//print out the words "High Scores" at the top
-		glTranslatef( FRAMEWIDTH/2 - (stringWidth/2)*scaleFactor, FRAMEHEIGHT - linePostion, 0);
-		glScalef(scaleFactor, scaleFactor, 0);
-		glRasterPos2i(0,0);
-		for(counter = 0; counter < strlen(mainTitle); counter++){
-			glutStrokeCharacter( GLUT_STROKE_ROMAN , mainTitle[counter]);
-		}
-	}
-	glPopMatrix();
-
-
-	//--------------------------------------------------------------------------
-	// Print column headings for the high score list
-	
-	sprintf(columnHeadings, "    %-30s%5s      %-7s %-14s", "Name", "Level", "Score", "Date");
-	stringLength = strlen(columnHeadings);
-	linePostion += 36; //now it equals 164
-	
-	glPushMatrix();
-	{
-		charWidth	= glutBitmapWidth(GLUT_BITMAP_8_BY_13, 'A');
-		scaleFactor = charWidth / 104.76; // GLUT_STROKE_MONO_ROMAN width in GLUT spec
-		stringWidth = stringLength * charWidth;
-		
-		highscoreLeftMargin = FRAMEWIDTH/2 - stringWidth/2;
-		
-		glTranslatef( highscoreLeftMargin, FRAMEHEIGHT - linePostion, 0);
-		glScalef(scaleFactor, scaleFactor, 0);
-		
-		glLineWidth(1.0);
-		glRasterPos2i(0,0);
-		for(counter = 0; counter < stringLength; counter++){
-			glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN , columnHeadings[counter]);
-//			glutBitmapCharacter( GLUT_BITMAP_8_BY_13 , columnHeadings[counter]);
-		}
-	}
-	glPopMatrix();
-	
-	// Underscore separating high score heading from list
-	glLineWidth(1.0);
-	glBegin(GL_LINES);
-	{
-		glVertex2f(highscoreLeftMargin, FRAMEHEIGHT-170);
-		glVertex2f(FRAMEWIDTH/2 + stringWidth/2, FRAMEHEIGHT-170);
-	}
-	glEnd();
-	
-
-	//--------------------------------------------------------------------------
-	// Print the actual high score list
-	
-	linePostion += 2*13; //initial line position
-	
-	for(scoreIndex = 0; scoreIndex < NUMBER_HIGH_SCORES; scoreIndex++)
-	{
-		//Format the time for Month/Day/Year format
-		struct tm *scoreTime = localtime(&(highscores[scoreIndex].date));
-		if(scoreTime != NULL)
-			strftime(dateForScore, sizeof(dateForScore), "%b. %d, %Y", scoreTime);
-		
-		if(enterHighScoredMode == true && scoreIndex == indexNewScore){ //a line for entry of a new high score
-			glColor3ub(255,0,0); //Highlight the new score
-			strcpy( name,newScore.name );
-			strcat(name, "_");
-			sprintf(highScoreString,  "%2d. %-31s%5d %10d  %-14s",scoreIndex+1, name, newScore.level, newScore.score, "");
-		}
-		else{ //print a preexisting high score
-			glColor3ub(255,255,255);
-			sprintf(highScoreString,  "%2d. %-31s%5d %10d  %-14s",scoreIndex+1, highscores[scoreIndex].name, highscores[scoreIndex].level, highscores[scoreIndex].score, dateForScore);
-		}
-		
-		// Get string measurements
-		stringLength    = strlen(highScoreString);
-		charWidth       = glutBitmapWidth(GLUT_BITMAP_8_BY_13, 'A');
-		scaleFactor     = charWidth / 104.76; // GLUT_STROKE_MONO_ROMAN width in GLUT spec
-		stringWidth     = stringLength * charWidth;
-		
-		// Draw the string
-		glPushMatrix();
-		{
-			glTranslatef( highscoreLeftMargin, FRAMEHEIGHT - linePostion, 0);
-			glScalef(scaleFactor, scaleFactor, 0);
-			
-			glLineWidth(1.0);
-			glRasterPos2i(0,0);
-			for(counter = 0; counter < stringLength; counter++){
-				glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN , highScoreString[counter]);
-//				glutBitmapCharacter( GLUT_BITMAP_8_BY_13 , highScoreString[counter]);
-			}
-		}
-		glPopMatrix();
-
-		linePostion += 13; //increment for character height
-		
-	}//end for loop to print highscores
-	
-	
-	//--------------------------------------------------------------------------
-	// Print Author notice at bottom
-	
-	if(enterHighScoredMode == false){
-		glColor3ub(255,255,255);
-		stringWidth = sprintf(highScoreString,  "MidnightBSD Space Game %s: This masterpiece brought to you by Allen M. Smith, 2002-%d.", ALLENROIDS_VERSION, ALLENROIDS_VERSION_DATE);
-		stringWidth = stringWidth*glutBitmapWidth(GLUT_BITMAP_8_BY_13, 'A');
-		
-		glRasterPos2f( FRAMEWIDTH/2 - (stringWidth/2)/((float)glutGet(GLUT_WINDOW_WIDTH)/FRAMEWIDTH), (FRAMEHEIGHT * (float) 1/32) );
-		for(counter = 0; counter < strlen(highScoreString); counter++){
-			glutBitmapCharacter( GLUT_BITMAP_8_BY_13 , highScoreString[counter]);
-		}
-	}
-
+void writeHighScores() {
+    if (FILE *file = std::fopen("High Scores", "w+")) {
+        for (Score score : highscores) {
+#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
+            flipBytes(&score.level, sizeof(score.level));
+            flipBytes(&score.score, sizeof(score.score));
+            flipBytes(&score.date, sizeof(score.date));
+#endif
+            std::fwrite(&score, sizeof(score), 1, file);
+        }
+        std::fclose(file);
+    }
 }
 
-
-/****************************************************
- * writeHighScores
- *  writes scores to a file
- ***************************************************/
-void writeHighScores(){
-	FILE *filePtr;
-	unsigned int counter;
-	Score currentScore;
-	if(( filePtr = fopen("High Scores", "w+") ) == NULL){
-		//printf("The file could not be opened.");
-	}
-	else{
-		for(counter = 0; counter < NUMBER_HIGH_SCORES; counter++){
-			//make a copy of the current score so we can safely flip bytes
-			// if we need to without affecting the original data.
-			currentScore = highscores[counter];
-			
-			//On Macs, we always write the data big-endian. So if
-			// we're on an x86 Mac, we need to flip the bytes.
-			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
-				flipBytes(&currentScore.level, sizeof(short));
-				flipBytes(&currentScore.score, sizeof(int));
-				flipBytes(&currentScore.date,  sizeof(time_t));
-			#endif
-
-			fwrite( &currentScore, sizeof(struct highScore), 1, filePtr);
-		}
-		fclose( filePtr );
-	}
+void readHighScores() {
+    FILE *file = std::fopen("High Scores", "r");
+    if (file == nullptr) { writeHighScores(); return; }
+    for (Score &score : highscores) {
+        if (std::fread(&score, sizeof(score), 1, file) != 1) {
+            std::fclose(file);
+            std::memset(highscores, 0, sizeof(highscores));
+            writeHighScores();
+            return;
+        }
+#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
+        flipBytes(&score.level, sizeof(score.level));
+        flipBytes(&score.score, sizeof(score.score));
+        flipBytes(&score.date, sizeof(score.date));
+#endif
+    }
+    std::fclose(file);
 }
 
-		
-/****************************************************
- * readHighScores
- *  writes scores to a file
- ***************************************************/
-void readHighScores(){
-	FILE *filePtr;
-	unsigned int counter = 0;
-	if(( filePtr = fopen("High Scores", "r") ) == NULL){
-		//printf("The file could not be opened for reading.");
-		writeHighScores();
-	}
-	else{
-		for(counter = 0; counter < NUMBER_HIGH_SCORES; counter++){
-			if(fread(&highscores[counter], sizeof(struct highScore), 1, filePtr) != 1){
-				fclose(filePtr);
-				memset(highscores, '\0', sizeof(highscores));
-				writeHighScores();
-				return;
-			}
-			//On Macs, we always write the data big-endian. So if
-			// we're on an x86 Mac, we need to flip the bytes.
-			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
-				flipBytes(&(highscores[counter].level), sizeof(short));
-				flipBytes(&(highscores[counter].score), sizeof(int));
-				flipBytes(&(highscores[counter].date),  sizeof(time_t));
-			#endif
-		}//end for
-		fclose(filePtr);
-	}//end else
-	
-}//end readHighScores
-
-		
-/****************************************************
- * newHighScore
- *  adds a new high score to the list for the specified
- *	player. It is used by first being called for player 1,
- *	then for player 2 in the keyboard method when player1's
- *	score is confirmed.
- ***************************************************/
-void newHighScore(int player){
-	int counter;
-	
-	indexNewScore = -1; //bogus value, since NULL apparently evaluates to zero
-	counter = 0;
-	
-	while( (counter < NUMBER_HIGH_SCORES) && (indexNewScore == -1) ){
-		if( highscores[counter].score < playerObjects[P(player)].score ){
-			indexNewScore = counter;
-		}
-		else
-			counter++;
-	}
-	if(indexNewScore != -1){
-		for(counter = NUMBER_HIGH_SCORES - 1; counter > indexNewScore; counter--)
-			highscores[counter] = highscores[counter-1]; //that is, the current cell is set to the previous array cell (shifting down)
-		newScore.level = playerObjects[P(player)].highestLevelAttained;
-		newScore.score = playerObjects[P(player)].score;
-		newScore.date = time(NULL);
-		memset( newScore.name, '\0', sizeof(newScore.name) ); //clear the new name
-		playerNumberWithScore = player;
-		enterHighScoredMode = true; //change display to accept score input
-		glutPostRedisplay();
-	}
-	else if(numberOfPlayers > player)
-		newHighScore(player + 1);
-		
+void newHighScore(int player) {
+    indexNewScore = -1;
+    for (int index = 0; index < NUMBER_HIGH_SCORES; ++index) {
+        if (highscores[index].score < playerObjects[P(player)].score) { indexNewScore = index; break; }
+    }
+    if (indexNewScore == -1) {
+        if (numberOfPlayers > player) newHighScore(player + 1);
+        return;
+    }
+    for (int index = NUMBER_HIGH_SCORES - 1; index > indexNewScore; --index) highscores[index] = highscores[index - 1];
+    newScore = {};
+    newScore.level = static_cast<short>(playerObjects[P(player)].highestLevelAttained);
+    newScore.score = playerObjects[P(player)].score;
+    newScore.date = std::time(nullptr);
+    playerNumberWithScore = player;
+    enterHighScoredMode = true;
 }
 
-
-/****************************************************
- * titleHandleMouse
- *  accepts mouse input
- ***************************************************/
-void titleHandleMouse(int button, int state, int x, int y){
-	GLuint nameBuffer[512] = {0};
-	int numberOfHits;
-	GLint viewport[4];
-	
-	if(button == GLUT_LEFT_BUTTON){
-		//view for selection mode
-		glGetIntegerv(GL_VIEWPORT, viewport);
-		glSelectBuffer(512, nameBuffer);
-		glRenderMode(GL_SELECT);
-		
-		glInitNames();
-		glPushName(0);
-		
-		//save original matrix
-		glPushMatrix();		
-		glLoadIdentity();
-		//1x1 area around mouse is used for selection
-		//viewport is stored with: x,y window coordinates, viewport height,width. So viewport[3] is the height
-		gluPickMatrix( (double) x, (double)(viewport[3] - y), 2.0, 2.0, viewport);
-			//gluOrtho2D(xmin, xmax, ymin, ymax); that is, the normal viewing area
-		gluOrtho2D( 0, FRAMEWIDTH, 0, FRAMEHEIGHT );
-		
-		configurePrintButtons(titleButtons.data(), titleButtons.size(), GL_SELECT, 0);
-		//restore viewing matrix
-		glPopMatrix();
-		glutSwapBuffers();
-		
-		numberOfHits = glRenderMode(GL_RENDER); //normal render mode
-		processHits(numberOfHits, nameBuffer,state);
-		glutPostRedisplay();
-	}
+void titleHandleLogicalMouse(bool pressed, float x, float y) {
+    if (enterHighScoredMode) return;
+    int hit = -1;
+    for (std::size_t index = 0; index < titleButtons.size(); ++index) {
+        const MyButton &button = titleButtons[index];
+        if (x >= button.position.x - buttonWidth / 2.0F && x <= button.position.x + buttonWidth / 2.0F &&
+            y >= button.position.y - buttonHeight / 2.0F && y <= button.position.y + buttonHeight / 2.0F) {
+            hit = static_cast<int>(index); break;
+        }
+    }
+    if (pressed) { buttonBeingPressed = hit; return; }
+    if (buttonBeingPressed == hit) activateTitleButton(hit);
+    buttonBeingPressed = -1;
 }
 
-
-/****************************************************
- * processHits
- *  process a click on a button
- ***************************************************/
-void processHits(unsigned int numberOfHits, GLuint buffer[], int mouseState){
-	unsigned int counterHits, counterNames;
-	GLuint names, *namesPtr;
-	
-	namesPtr = (GLuint *) buffer;
-	
-	if(numberOfHits == 0){
-		buttonBeingPressed = -1;
-	}
-	else{ //we hit something
-		if(mouseState == GLUT_DOWN){
-			namesPtr += 3;
-			buttonBeingPressed = (int) *namesPtr;
-		}
-		else{ //mouse released
-			for(counterHits = 0; counterHits < numberOfHits; counterHits++){
-				names = *namesPtr;
-				namesPtr += 3;
-				for(counterNames = 0; counterNames < names; counterNames++){
-					if(buttonBeingPressed == (int)*namesPtr){ //make sure we are releasing the mouse on the button we started with
-						if(*namesPtr == 0){
-							gameInit(1); //new 1-Player game
-						}
-						else if(*namesPtr == 1){
-							gameInit(2); //new 2-Player game
-						}
-						else if(*namesPtr == 2){
-							configureInit(); //configure
-						}
-						glutPostRedisplay();
-					}
-					namesPtr++;
-				}//end for names
-			}//end for hits
-			buttonBeingPressed = -1;
-		}//end else for mouse released
-	}//end numberHits > 0
+void titleHandleKeyboard(unsigned char key, int, int) {
+    if (!enterHighScoredMode) return;
+    if (key == 13 || key == 3) {
+        highscores[indexNewScore] = newScore;
+        enterHighScoredMode = false;
+        writeHighScores();
+        if (numberOfPlayers > playerNumberWithScore) newHighScore(playerNumberWithScore + 1);
+    } else if (key == 8 || key == 127) {
+        const std::size_t length = std::strlen(newScore.name);
+        if (length > 0) newScore.name[length - 1] = '\0';
+    } else if (key >= 32 && key < 127) {
+        const std::size_t length = std::strlen(newScore.name);
+        if (length < sizeof(newScore.name) - 1) {
+            newScore.name[length] = static_cast<char>(key);
+            newScore.name[length + 1] = '\0';
+        }
+    }
 }
 
-
-/****************************************************
- * titleHandleKeyboard
- *  accepts regular keyboard input
- ***************************************************/
-void titleHandleKeyboard(unsigned char keypressed, int x, int y){
-//	printf("%d\n",keypressed);
-	if(enterHighScoredMode == true){
-		if(keypressed == 13 || keypressed == 3){ //carriage return
-			highscores[indexNewScore] = newScore;
-			enterHighScoredMode = false; //done entering score
-			writeHighScores();
-			if(numberOfPlayers > playerNumberWithScore)
-				newHighScore(playerNumberWithScore + 1);
-		}
-		else if (keypressed == 8 || keypressed == 127){ //Delete is a 127, not an 8. Don't ask me why.
-			//Make the previous character into the terminator. This removes it from the string.
-			size_t nameLength = strlen(newScore.name);
-			if(nameLength > 0)
-				newScore.name[nameLength - 1] = '\0';
-		}
-		else{
-			size_t nameLength = strlen(newScore.name);
-			if(nameLength < 31) { //this is the maximum length of a name
-				newScore.name[nameLength] = keypressed;
-				newScore.name[nameLength + 1] = '\0';
-			}
-			else
-				titleHandleKeyboard(13,0,0); //press return for them!
-		}
-	}
-	glutPostRedisplay();
-}
-
-/****************************************************
- * reshape
- *  when the window is resized
- *	constrains the window size to the proper aspect ratio
- ***************************************************/
-void reshape(int newWidth, int newHeight){
-	float aspectRatio = (float) FRAMEWIDTH / (float) FRAMEHEIGHT;
-//	newHeight = newHeight - newHeight%12;
-	newWidth = (int) ((float) newHeight * aspectRatio);
-		
-	glViewport(0,0,newWidth, newHeight); //reconstrain the window contents to the actual window!
-	glutReshapeWindow(newWidth, newHeight);
-}
-
-
-
-/****************************************************
- * main
- ***************************************************/
-int main(int argc, char **argv) {
-	float   aspectRatio     = (float) FRAMEWIDTH / (float) FRAMEHEIGHT;
-	int     screenWidth     = 0;
-	int     screenHeight    = 0;
-	int     windowWidth     = 0;
-	int     windowHeight    = 0;
-	int     windowOriginX   = 0;
-	
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	
-	// Make the window as big as the screen allows
-	screenWidth     = glutGet(GLUT_SCREEN_WIDTH);
-	screenHeight    = glutGet(GLUT_SCREEN_HEIGHT);
-	
-	windowHeight	= screenHeight;
-	windowWidth		= (int)(windowHeight * aspectRatio);
-	
-	// Center it
-	windowOriginX	= (screenWidth - windowWidth) / 2;
-	
-	glutInitWindowSize(windowWidth, windowHeight);
-	glutInitWindowPosition(windowOriginX, 0);
-	glutCreateWindow("MidnightBSD Space Game");
-	
-	// Here we go!
-	titleInit();
-	glutMainLoop();
-	
-	return 0;
+int main(int, char **) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) { std::fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError()); return 1; }
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_Window *window = SDL_CreateWindow("MidnightBSD Space Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        FRAMEWIDTH, FRAMEHEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    if (window == nullptr) { std::fprintf(stderr, "SDL window creation failed: %s\n", SDL_GetError()); SDL_Quit(); return 1; }
+    SDL_GLContext context = SDL_GL_CreateContext(window);
+    if (context == nullptr) { std::fprintf(stderr, "OpenGL 3.3 context creation failed: %s\n", SDL_GetError()); SDL_DestroyWindow(window); SDL_Quit(); return 1; }
+    SDL_GL_SetSwapInterval(1);
+    Renderer renderer;
+    UiText text;
+    std::string error;
+    if (!renderer.initialize(error) || !text.initialize("assets/fonts", error)) {
+        std::fprintf(stderr, "Renderer initialization failed: %s\n", error.c_str());
+        text.shutdown(); renderer.shutdown(); SDL_GL_DeleteContext(context); SDL_DestroyWindow(window); SDL_Quit(); return 1;
+    }
+    titleInit();
+    SDL_StartTextInput();
+    bool running = true;
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event) != 0) {
+            if (event.type == SDL_QUIT) { running = false; continue; }
+            if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+                int windowWidth = 0, windowHeight = 0, drawableWidth = 0, drawableHeight = 0;
+                SDL_GetWindowSize(window, &windowWidth, &windowHeight); SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+                const auto point = logicalPointFromWindow(event.button.x, event.button.y, windowWidth, windowHeight,
+                    makeLogicalViewport(drawableWidth, drawableHeight, FRAMEWIDTH, FRAMEHEIGHT), drawableWidth, drawableHeight, FRAMEWIDTH, FRAMEHEIGHT);
+                if (event.button.button == SDL_BUTTON_LEFT && point) {
+                    const bool pressed = event.type == SDL_MOUSEBUTTONDOWN;
+                    if (activeScreen() == ApplicationScreen::Title) titleHandleLogicalMouse(pressed, point->x, point->y);
+                    else if (activeScreen() == ApplicationScreen::Configure) configureHandleLogicalMouse(pressed, point->x, point->y);
+                }
+            }
+            if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+                if (const auto key = legacyKeyFromSdl(event.key.keysym.sym)) {
+                    if (activeScreen() == ApplicationScreen::Game) handleKey(*key);
+                    else if (activeScreen() == ApplicationScreen::Configure) assignKey(*key);
+                    else if (event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER || event.key.keysym.sym == SDLK_BACKSPACE || event.key.keysym.sym == SDLK_DELETE)
+                        titleHandleKeyboard(static_cast<unsigned char>(*key), 0, 0);
+                }
+            }
+            if (event.type == SDL_KEYUP) {
+                if (const auto key = legacyKeyFromSdl(event.key.keysym.sym); key && activeScreen() == ApplicationScreen::Game) handleKeyUp(*key);
+            }
+            if (event.type == SDL_TEXTINPUT && activeScreen() == ApplicationScreen::Title && enterHighScoredMode) {
+                for (const unsigned char *value = reinterpret_cast<const unsigned char *>(event.text.text); *value != '\0'; ++value) titleHandleKeyboard(*value, 0, 0);
+            }
+        }
+        runScheduledGameCallbacks();
+        if (activeScreen() == ApplicationScreen::Game && !paused) idle();
+        int drawableWidth = 0, drawableHeight = 0;
+        SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+        renderer.beginFrame(makeLogicalViewport(drawableWidth, drawableHeight, FRAMEWIDTH, FRAMEHEIGHT), {0.0F, 0.0F, 0.0F, 1.0F});
+        switch (activeScreen()) {
+        case ApplicationScreen::Title: titleDisplay(); break;
+        case ApplicationScreen::Configure: configureDisplay(); break;
+        case ApplicationScreen::Game: display(); break;
+        }
+        SDL_GL_SwapWindow(window);
+    }
+    SDL_StopTextInput();
+    text.shutdown(); renderer.shutdown(); SDL_GL_DeleteContext(context); SDL_DestroyWindow(window); SDL_Quit();
+    return 0;
 }

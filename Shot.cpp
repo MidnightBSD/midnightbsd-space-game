@@ -8,20 +8,9 @@
  */
 
 #include "Shot.h"
+#include "Renderer.h"
 
-/****************************************************
- * draw
- *  paints the shot as a dodecahedron
- ***************************************************/
-void Shot::draw() const{
-	float angle;
-	glColor3ubv( color );
-	
-	//one could just draw points for these. However, drawing circles looks better, especially on resize
-	glBegin(GL_TRIANGLE_FAN);
-		for(angle = 0; angle < 2*PI; angle += 2*PI/12){
-			glVertex2f( radius*cos(angle), 
-						radius*sin(angle) );
-		}
-	glEnd();
+void Shot::drawCore(float x, float y) const {
+	Renderer::current()->filledCircle(x, y, radius, 0.0F,
+		{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, 1.0F}, 12);
 }

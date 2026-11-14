@@ -10,6 +10,7 @@
 
 #include "Kerblooie.h"
 #include "GameRandom.h"
+#include "Renderer.h"
 
 const int Kerblooie::kerblooieSizes[6] = {6, 24, 36, 48, 60, 72};
 
@@ -31,34 +32,18 @@ Kerblooie::Kerblooie(Coordinate positionIn, Vector directionIn, int lifespanIn, 
 	for(counter = 0; counter < 3; counter++)
 		color[counter] = colorHint[counter] + GameRandom::integer(0, 255 - colorHint[counter]) * (GameRandom::boolean() ? 1 : -1); //takes hinted color and gives it some variation
 	color[3] = 255; //starts out at maximum brightness
-}
-
+	}
 /****************************************************
  * drawInGame
  *  overrides the edge-wrapping features in the superclass
  *  they aren't needed for such simple explosion particles
  ***************************************************/
 void Kerblooie::drawInGame() const{
-	glPushMatrix();
-		glTranslatef(position.x, position.y, 0);
-		draw();//just call the main draw function
-	glPopMatrix();
+	drawCore(position.x, position.y);
 }
 
-/****************************************************
- * draw
- *  paints the kerblooie particle
- ***************************************************/
-void Kerblooie::draw() const{
-	float angle; //used to draw round particle
-	float randomParticleSize; //each kerblooie particle's size is set to "twinkle" slightly
-	
-	glColor4ubv( color );
-	randomParticleSize = radius + (GameRandom::integer(0, 1) * 0.25F)/2;
-	glBegin(GL_TRIANGLE_FAN);
-		for(angle = 0; angle < 2*PI; angle += 2*PI/5){
-			glVertex2f( randomParticleSize*cos(angle), 
-						randomParticleSize*sin(angle) );
-		}
-	glEnd();
+void Kerblooie::drawCore(float x, float y) const {
+	const float particleRadius = radius + (GameRandom::integer(0, 1) * 0.25F) / 2;
+	Renderer::current()->filledCircle(x, y, particleRadius, 0.0F,
+		{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, color[3] / 255.0F}, 5);
 }

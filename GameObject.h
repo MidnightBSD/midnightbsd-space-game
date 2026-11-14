@@ -26,12 +26,12 @@ class GameObject{
 	public:
 		virtual ~GameObject();
 	
-		virtual void drawInGame() const; //draws the object (calling draw) at its position; handles wrapping at screen edges
-		virtual void draw() const =0; //generic draw function pays no attention to position
+		virtual void drawInGame() const; //draws the object at its position and handles edge wrapping
 		void adjustCoordinate(float movementScaleFactor);
 		virtual bool intersectsWith(const GameObject *, bool twoWayCompare = true) const; //returns true if this object intersects with the specified object
 
 	protected:
+		virtual void drawCore(float x, float y) const;
 		virtual float collisionRadius() const;
 };
 

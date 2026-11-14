@@ -24,6 +24,79 @@
 #include "sound.h"
 #include "Starfield.h"
 #include "TitleScreen.h"
+#include "Platform.h"
+#include "Renderer.h"
+#include "UiText.h"
+
+extern unsigned int levelNumber;
+extern boolean startingNewLevel;
+extern boolean paused;
+extern unsigned short numberOfPlayers;
+extern Player playerObjects[MAX_NUMBER_PLAYERS];
+
+namespace {
+RenderColor shieldColor(const Spaceship &ship) {
+    if (ship.maxStrength <= 0 || ship.strength <= ship.maxStrength / 4) return {1.0F, 0.0F, 0.0F, 0.5F};
+    if (ship.strength <= ship.maxStrength / 2) return {1.0F, 1.0F, 0.0F, 0.5F};
+    if (ship.strength <= ship.maxStrength * 3 / 4) return {128.0F / 255.0F, 1.0F, 0.0F, 0.5F};
+    if (ship.strength <= ship.maxStrength) return {0.0F, 1.0F, 0.0F, 0.5F};
+    const float overload = static_cast<float>(ship.strength % ship.maxStrength) /
+        (ship.maxStrength * OVERLOAD_FACTOR);
+    return {overload, 1.0F - overload, 0.0F, 0.5F};
+}
+
+void drawShieldMeter(Renderer &renderer, const Spaceship &ship, float x, bool growsRight) {
+    constexpr float width = 80.0F;
+    constexpr float height = 12.0F;
+    constexpr float border = 2.0F;
+    const RenderColor outline{ship.color[0] / 255.0F, ship.color[1] / 255.0F, ship.color[2] / 255.0F, 1.0F};
+    renderer.filledRectangle(x, FRAMEHEIGHT - 20.0F, width, height, outline);
+    renderer.filledRectangle(x + border, FRAMEHEIGHT - 20.0F + border, width - 2.0F * border,
+                             height - 2.0F * border, {0.0F, 0.0F, 0.0F, 0.75F});
+    if (ship.maxStrength <= 0) return;
+    float ratio = static_cast<float>(ship.strength) / ship.maxStrength;
+    if (ratio < 0.0F) ratio = 0.0F;
+    if (ratio > 1.0F) ratio = 1.0F;
+    const float innerWidth = (width - 2.0F * border) * ratio;
+    const float fillX = growsRight ? x + border : x + width - border - innerWidth;
+    renderer.filledRectangle(fillX, FRAMEHEIGHT - 20.0F + border, innerWidth, height - 2.0F * border,
+                             shieldColor(ship));
+}
+
+void drawCoreGameplayText() {
+    UiText *text = UiText::current();
+    Renderer *renderer = Renderer::current();
+    if (text == nullptr || renderer == nullptr) return;
+    constexpr RenderColor white{1.0F, 1.0F, 1.0F, 1.0F};
+    char value[64]{};
+    for (unsigned int player = 1; player <= numberOfPlayers; ++player) {
+        const Player &current = playerObjects[P(player)];
+        const bool firstPlayer = player == 1;
+        drawShieldMeter(*renderer, current.spaceship, firstPlayer ? 8.0F : FRAMEWIDTH - 88.0F, firstPlayer);
+        std::snprintf(value, sizeof(value), "P%u  Lives: %d  Score: %d", player,
+                      current.lives >= 0 ? current.lives : 0, current.score);
+        const float width = text->width(value, 14, FontFace::Regular);
+        const float x = firstPlayer ? 96.0F : FRAMEWIDTH - width - 96.0F;
+        text->draw(value, x, FRAMEHEIGHT - 24.0F, 14, FontFace::Regular, white);
+    }
+    std::snprintf(value, sizeof(value), "LEVEL %u", levelNumber);
+    const float levelWidth = text->width(value, 16, FontFace::Bold);
+    text->draw(value, FRAMEWIDTH / 2.0F - levelWidth / 2.0F, FRAMEHEIGHT - 24.0F,
+               16, FontFace::Bold, {128.0F / 255.0F, 0.0F, 64.0F / 255.0F, 1.0F});
+    if (paused) {
+        renderer->filledRectangle(0.0F, 0.0F, FRAMEWIDTH, FRAMEHEIGHT,
+                                  {0.5F, 0.5F, 0.5F, 0.5F});
+        constexpr std::string_view label = "PAUSED";
+        text->draw(label, FRAMEWIDTH / 2.0F - text->width(label, 42, FontFace::Bold) / 2.0F,
+                   FRAMEHEIGHT / 2.0F - 21.0F, 42, FontFace::Bold, {1.0F, 0.0F, 0.0F, 0.75F});
+    } else if (startingNewLevel) {
+        std::snprintf(value, sizeof(value), "LEVEL %u", levelNumber + 1);
+        text->draw(value, FRAMEWIDTH / 2.0F - text->width(value, 42, FontFace::Bold) / 2.0F,
+                   FRAMEHEIGHT / 2.0F - 21.0F, 42, FontFace::Bold,
+                   {128.0F / 255.0F, 0.0F, 64.0F / 255.0F, 0.75F});
+    }
+}
+}
 
 /*****Global Variables*****/
 extern SDL_AudioCVT     soundBuffer[];
@@ -69,34 +142,8 @@ extern PlayerKeys playerKeys[MAX_NUMBER_PLAYERS]; //defined in 'Configure Screen
  ***************************************************/
 void gameInit(int numberOfPlayersChosen){
 	unsigned int counter;
-	
-	//set up glut function calls
-	glutMouseFunc(NULL);
-	glutKeyboardFunc(handleKeyboard);
-	glutKeyboardUpFunc(handleKeyboardUp);
-	glutSpecialFunc(handleSpecialKeyboard);
-	glutSpecialUpFunc(handleSpecialKeyboardUp);
-	glutIgnoreKeyRepeat(true);
-	glutDisplayFunc(display);
-#ifdef TIGHT_IDLE_DRAWING
-	glutIdleFunc(idle);
-#else
-	glutTimerFunc(10, idleByTimer, 0);
-#endif
+	setActiveScreen(ApplicationScreen::Game);
 
-	glPolygonMode(GL_FRONT, GL_FILL);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glClearColor(0,0,0, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glShadeModel(GL_SMOOTH);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_POINT_SMOOTH);
-	glEnable(GL_POLYGON_SMOOTH);
-	glLoadIdentity();
-//	gluOrtho2D(0, FRAMEWIDTH, 0, FRAMEHEIGHT);
-	glOrtho(0,FRAMEWIDTH, 0, FRAMEHEIGHT,-640,640);
-	
 	soundInit();
 	
 	numberOfPlayers = numberOfPlayersChosen;
@@ -130,6 +177,20 @@ void gameInit(int numberOfPlayersChosen){
  *  paints all the game elements
  ***************************************************/
 void display(void) {
+	if (Renderer::current() != nullptr) {
+		drawStarfield();
+		for (unsigned int player = 1; player <= numberOfPlayers; ++player) {
+			if (playerObjects[P(player)].isEnabled()) playerObjects[P(player)].spaceship.drawInGame();
+		}
+		if (!shotList.isEmpty()) drawList(&shotList);
+		if (!asteroidList.isEmpty()) drawList(&asteroidList);
+		if (!kerblooieList.isEmpty()) drawList(&kerblooieList);
+		if (!crystalList.isEmpty()) drawList(&crystalList);
+		if (!badGuyList.isEmpty()) drawList(&badGuyList);
+		drawCoreGameplayText();
+		return;
+	}
+#if 0 // Removed compatibility-profile renderer; SDL presents the core frame.
 	char pausedText[] = "PAUSED"; //print this if the game is paused
 	char *levelText;
 	unsigned int counter;
@@ -223,6 +284,7 @@ void display(void) {
 	}
 	
 	glutSwapBuffers();
+#endif
 }
 
 /****************************************************
@@ -239,6 +301,7 @@ void drawStarfield()
  * drawStatisticsHeader
  *  Spits out score data and vital signs at the top of the window
  ***************************************************/
+ #if 0 // Replaced by drawCoreGameplayText().
 void drawStatisticsHeader(){
 	char hudText[64]; //"heads-up display?"
 	const int hudWidth = 80;
@@ -284,6 +347,7 @@ void drawStatisticsHeader(){
 	}//endif for player2
 	
 }
+#endif
 
 
 /****************************************************
@@ -393,7 +457,7 @@ void moveAsteroids(LinkedList<GameObject> * asteroids, float movementScaleFactor
 				if(badGuySchedule[badGuysSummonedToDate] == unsmallAsteroidsDestroyedToDate){
 					playSound(soundBuffer, WARNING_ALIEN_SOUND );
 					badGuysSummonedToDate++; //do not move this line to summonBadGuy(). It doesn't always work in there.
-					glutTimerFunc(0, summonBadGuy, smartiness(levelNumber) );
+					scheduleGameCallback(2000, summonBadGuy, smartiness(levelNumber));
 				}
 					
 				
@@ -534,6 +598,7 @@ void collideObjects(GameObject *hitter, GameObject *hittee){
  *
  *	controlled by TIGHT_IDLE_DRAWING
  ***************************************************/
+#if 0 // The SDL loop invokes idle() once per presented frame.
 void idleByTimer(int delayForThisTimer){
 
 	static int previousStartTime = 0; //time at beginning of previous calculation/draw cycle
@@ -545,13 +610,13 @@ void idleByTimer(int delayForThisTimer){
 	//We can't do the current frame because we don't know how long 
 	//drawing is going to take.)
 						   // = calcTime + drawTime
-	previousFrameCalcDrawTime = glutGet(GLUT_ELAPSED_TIME) - previousStartTime - delayForThisTimer;
+	previousFrameCalcDrawTime = static_cast<int>(platformMilliseconds()) - previousStartTime - delayForThisTimer;
 	if(previousFrameCalcDrawTime < minimumMillisecondsPerFrame){
 		millisecondsTillNextFrame = minimumMillisecondsPerFrame - previousFrameCalcDrawTime;
 	}
 	
 	//mark the new time just before doing the calculations and drawing for the next frame.
-	previousStartTime = glutGet(GLUT_ELAPSED_TIME);
+	previousStartTime = static_cast<int>(platformMilliseconds());
 	
 	//Go!
 	if(paused == false){
@@ -560,6 +625,7 @@ void idleByTimer(int delayForThisTimer){
 	}
 	
 }//end idleByTimer
+#endif
 
 /****************************************************
  * idle
@@ -571,12 +637,12 @@ void idle(void){
 	unsigned int counter;
 	float movementScaleFactor;
 	
-	timeForPreviousFrame = glutGet(GLUT_ELAPSED_TIME) - previousSystemTime;
+	timeForPreviousFrame = static_cast<int>(platformMilliseconds()) - previousSystemTime;
 	movementScaleFactor = (float)timeForPreviousFrame/millisecondsPerStandardFrame;
 	movementScaleFactor = fmod(movementScaleFactor, 1);
 	
 	//Record the new "previous system time" before doing all the movement calculations
-	previousSystemTime = glutGet(GLUT_ELAPSED_TIME);
+	previousSystemTime = static_cast<int>(platformMilliseconds());
 
 	//generic objects
 	if(shotList.isEmpty() == false){
@@ -616,12 +682,9 @@ void idle(void){
 	
 	//starts new level if needs be
 	if(asteroidList.isEmpty() && startingNewLevel == false){
-		glutTimerFunc(0, startLevel, levelNumber+1); //start new level after four seconds (handled inside function call)
+		scheduleGameCallback(4000, startLevel, levelNumber + 1);
 		startingNewLevel = true;
 	}
-	
-	//windowing
-	glutPostRedisplay();
 	
 }
 
@@ -652,7 +715,7 @@ void updateBadGuys(LinkedList<GameObject> *badGuys, float movementScaleFactor){
 		currentBadGuy->thrustTimeToLive -= (int) (millisecondsPerStandardFrame * movementScaleFactor);
 		if(currentBadGuy->thrustTimeToLive <= 0 && currentBadGuy->thrusting == true){
 			currentBadGuy->thrusting = false;
-			currentBadGuy->drawThrustUntil = glutGet( GLUT_ELAPSED_TIME ) + FADEOUTS;
+			currentBadGuy->drawThrustUntil = static_cast<int>(platformMilliseconds()) + FADEOUTS;
 			playSound(soundBuffer, STOP_THRUSTING_SOUND);
 
 		}
@@ -1140,10 +1203,10 @@ void impactShip(Spaceship *ship, HitData impactData){
 					numberOfPlayersActive--;
 					playerObjects[P(playerNumber)].highestLevelAttained = levelNumber;
 					if(numberOfPlayersActive <= 0)
-						glutTimerFunc(3000, endGame, 0); //end the game after 3 seconds; after all; no one is playing!
+						scheduleGameCallback(6000, endGame, 0);
 				}
 				else{
-					glutTimerFunc(0, resurrectShip, playerNumber); //rebuild after 3 seconds
+					scheduleGameCallback(3000, resurrectShip, playerNumber);
 				}
 			}
 			spawnKerblooie(
@@ -1164,19 +1227,8 @@ void impactShip(Spaceship *ship, HitData impactData){
  *  rebuilds a spaceship; always called by a timer function!
  ***************************************************/
 void resurrectShip(int playerNumber){
-	static boolean firstCall = true; //this is only initialized upon variable creation
-	if(firstCall == true){
-		glutTimerFunc(3000, resurrectShip, playerNumber); //rebuild after 3 seconds
-		firstCall = false;
-		//Why this is necessary:
-		//For some reason, calling glutTimerFunc (within the process of the idle function?) causes it to only time the first call. Subsequent calls execute immediately. Hence the "double call" here.
-		//Inexplicably, the second timer call works just fine.
-	}
-	else{
-		playerObjects[P(playerNumber)].spawnSpaceship();
-		playerObjects[P(playerNumber)].setEnabled(true);
-		firstCall = true;
-	}
+	playerObjects[P(playerNumber)].spawnSpaceship();
+	playerObjects[P(playerNumber)].setEnabled(true);
 }
 
 
@@ -1198,12 +1250,6 @@ void spawnStarfield()
  *	in that it adds the alien into the list 'badGuys'
  ***************************************************/
 void summonBadGuy(int smartinessValue) {
-	static boolean firstCall = true;
-	if(firstCall == true){
-		glutTimerFunc(2000, summonBadGuy, smartinessValue);
-		firstCall = false;
-	}
-	else{
 		BadGuy *gremlin = new BadGuy; //"gremlin" because he's not nice--yeah...
 		boolean alongX;
 		
@@ -1245,9 +1291,6 @@ void summonBadGuy(int smartinessValue) {
 		gremlin->thrustTimeToLive = GameRandom::integer(0, 499);
 		
 		badGuyList.insertObject(gremlin);
-		firstCall = true;
-	}
-	//return gremlin;
 }
 
 
@@ -1391,7 +1434,6 @@ void spawnCrystal(int specimen, Coordinate position, LinkedList<GameObject> *lis
  *  initiates a level
  ***************************************************/
 void startLevel(int level) {
-	static boolean firstCall = true; //this is only initialized upon variable creation
 	unsigned int numberUnsmallAsteroids = 0;
 	unsigned int totalNumberLargeAsteroids; //this will be the initial number of asteroids on the screen
 	Vector zeroVector;
@@ -1406,14 +1448,7 @@ void startLevel(int level) {
 	zeroVector.x = 0;
 	zeroVector.y = 0;
 	
-	if(firstCall == true && startingNewLevel == true){ //don't do this silly jerry-rig unless the method was actually called during gameplay
-		glutTimerFunc(4000, startLevel, level); //rebuild after 4 seconds
-		firstCall = false;
-		//Why this is necessary:
-		//For some reason, calling glutTimerFunc (within the process of the idle function?) causes it to only time the first call. Subsequent calls execute immediately. Hence the "double call" here.
-		//Inexplicably, the second timer call works just fine.
-	}
-	else{
+	{
 		//the actual startLevel code!
 
 		//reset players to default positions
@@ -1453,7 +1488,6 @@ void startLevel(int level) {
 		numberUnsmallAsteroids = totalNumberLargeAsteroids; //start out with at least that many unsmalls
 		newAsteroidReleaseSchedule = (int *)calloc(totalNumberLargeAsteroids, sizeof(int) ); //will hold the number of smaller asteroids to be produced from each *large* one
 		if(newAsteroidReleaseSchedule == NULL){
-			firstCall = true;
 			startingNewLevel = false;
 			return;
 		}
@@ -1478,7 +1512,6 @@ void startLevel(int level) {
 				free(newAsteroidReleaseSchedule);
 				for(scheduleCounter = 0; scheduleCounter < counter; scheduleCounter++)
 					free(newCrystalReleaseSchedule[scheduleCounter]);
-				firstCall = true;
 				startingNewLevel = false;
 				return;
 			}
@@ -1523,7 +1556,6 @@ void startLevel(int level) {
 				free(newAsteroidReleaseSchedule);
 				for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++)
 					free(newCrystalReleaseSchedule[counter]);
-				firstCall = true;
 				startingNewLevel = false;
 				return;
 			}
@@ -1541,7 +1573,6 @@ void startLevel(int level) {
 			free(newAsteroidReleaseSchedule);
 			for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++)
 				free(newCrystalReleaseSchedule[counter]);
-			firstCall = true;
 			startingNewLevel = false;
 			return;
 		}
@@ -1565,7 +1596,6 @@ void startLevel(int level) {
  		startingNewLevel = false; //the new level has begun
 		levelNumber = level;
 
-		firstCall = true;
 	}
 
 
@@ -1576,39 +1606,10 @@ void startLevel(int level) {
  * endGame
  ***************************************************/
 void endGame(int needlessParameter) {
-	static boolean firstCall = true; //this is only initialized upon variable creation
-	if(firstCall == true){
-		glutTimerFunc(3000, endGame, needlessParameter); //rebuild after 3 seconds
-		firstCall = false;
-		//Why this is necessary:
-		//For some reason, calling glutTimerFunc (within the process of the idle function?) causes it to only time the first call. Subsequent calls execute immediately. Hence the "double call" here.
-		//Inexplicably, the second timer call works just fine.
-	}
-	else{
-		//the actual endGame code!
-		paused = true; //stops timer for timer-idle drawing.
-		titleInit();
-		newHighScore(1); //create highscore for player1. Player2's is called afterwards.
-	
-		glutPostRedisplay();
-		firstCall = true;
-	}
-}
-
-/****************************************************
- * handleKeyboard
- *  accepts regular keyboard input
- ***************************************************/
-void handleKeyboard(unsigned char keypressed, int x, int y){
-	handleKey(keypressed);
-}
-
-/****************************************************
- * handleSpecialKeyboard
- *  accepts special keys, i.e. arrows, etc.
- ***************************************************/
-void handleSpecialKeyboard(int keypressed, int x, int y){
-	handleKey(-keypressed); //by convention in my program, special keys are negative
+	(void)needlessParameter;
+	paused = true;
+	titleInit();
+	newHighScore(1);
 }
 
 
@@ -1619,44 +1620,11 @@ void handleSpecialKeyboard(int keypressed, int x, int y){
 void handleKey(int keypressed){
 	unsigned int counter;
 	
-	//Cheat Codes!
-	if(glutGetModifiers() == GLUT_ACTIVE_ALT){
-		switch(keypressed){
-			case -GLUT_KEY_F1:
-				//playerObjects[P(1)].lives++;
-				levelNumber++;
-				break;
-			case -GLUT_KEY_F2:
-				playerObjects[P(2)].lives++;
-				break;
-			case -GLUT_KEY_F5:	
-				levelNumber++;
-				break;
-			case -GLUT_KEY_F6:	
-				levelNumber--;
-				break;
-			
-		} //end switch
-	}//end if
-
 	//pause on escape keypress
 	if(keypressed == 27 && paused == false){
-		glutSpecialFunc(NULL);
-		glutIdleFunc(NULL);
-		
 		paused = true;
-		glutPostRedisplay();
 	}
 	else if(keypressed == 27 && paused == true){ //*unpause only* on escape key
-		glutKeyboardUpFunc(handleKeyboardUp);
-		glutSpecialFunc(handleSpecialKeyboard);
-		glutSpecialUpFunc(handleSpecialKeyboardUp);
-#ifdef TIGHT_IDLE_DRAWING
-		glutIdleFunc(idle);
-#else
-		glutTimerFunc(0, idleByTimer, 0);
-#endif
-		
 		paused = false;
 	}
 	else if(paused == false){ //don't do key actions if paused
@@ -1684,23 +1652,6 @@ void handleKey(int keypressed){
 
 
 /****************************************************
- * handleKeyboardUp
- *  accepts regular keyboard input
- ***************************************************/
-void handleKeyboardUp(unsigned char keypressed, int x, int y){
-	handleKeyUp(keypressed);
-}
-
-/****************************************************
- * handleSpecialKeyboardUp
- *  accepts special keys, i.e. arrows, etc.
- ***************************************************/
-void handleSpecialKeyboardUp(int keypressed, int x, int y){
-	handleKeyUp(-keypressed); //by convention in my program, special keys are negative
-}
-
-
-/****************************************************
  * handleKeyUp
  *  when a key is released
  ***************************************************/
@@ -1716,7 +1667,7 @@ void handleKeyUp(int keyreleased){
 				playerObjects[P(counter)].spaceship.rotating = NOT_ROTATING;
 			else if( THRUST(P(counter)) == keyreleased){
 				playerObjects[P(counter)].spaceship.thrusting = false;
-				playerObjects[P(counter)].spaceship.drawThrustUntil = glutGet( GLUT_ELAPSED_TIME ) + FADEOUTS;
+				playerObjects[P(counter)].spaceship.drawThrustUntil = static_cast<int>(platformMilliseconds()) + FADEOUTS;
 				playSound(soundBuffer, STOP_THRUSTING_SOUND);
 			}
 			else if( REVERSE(P(counter)) == keyreleased )

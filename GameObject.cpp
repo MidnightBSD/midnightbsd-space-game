@@ -7,6 +7,7 @@
  */
 
 #include "GameObject.h"
+#include "Renderer.h"
 
 /****************************************************
  * ~GameObject
@@ -24,44 +25,14 @@ GameObject::~GameObject()
  *  duplicating it for any wrapping necessary at the window edges.
  ***************************************************/
 void GameObject::drawInGame() const{
-	//draw in default location first
-	glPushMatrix();
-		glTranslatef(position.x, position.y, 0);
-		draw();
-	glPopMatrix();
-	
-	//handle wrapping on the left side
-	if(position.x < radius){
-		glPushMatrix();
-			glTranslatef(position.x + FRAMEWIDTH, position.y, 0); //draw another asteroid just to the right of the rightmost screen border
-			draw();
-		glPopMatrix();
-		
-	}
-	//handle wrapping on the right side
-	else if(FRAMEWIDTH - position.x < radius){
-		glPushMatrix();
-			glTranslatef(0 - (FRAMEWIDTH - position.x), position.y, 0);
-			draw();
-		glPopMatrix();
-		
-	}
-	//handle wrapping on the bottom
-	if(position.y < radius){
-		glPushMatrix();
-			glTranslatef(position.x, position.y + FRAMEHEIGHT, 0);
-			draw();
-		glPopMatrix();
-		
-	}
-	//handle wrapping on the top
-	else if(FRAMEHEIGHT - position.y < radius){
-		glPushMatrix();
-			glTranslatef(position.x, 0 - (FRAMEHEIGHT - position.y), 0);
-			draw();
-		glPopMatrix();
-		
-	}
+	drawCore(position.x, position.y);
+	if (position.x < radius) drawCore(position.x + FRAMEWIDTH, position.y);
+	else if (FRAMEWIDTH - position.x < radius) drawCore(position.x - FRAMEWIDTH, position.y);
+	if (position.y < radius) drawCore(position.x, position.y + FRAMEHEIGHT);
+	else if (FRAMEHEIGHT - position.y < radius) drawCore(position.x, position.y - FRAMEHEIGHT);
+}
+
+void GameObject::drawCore(float, float) const {
 }
 
 /****************************************************

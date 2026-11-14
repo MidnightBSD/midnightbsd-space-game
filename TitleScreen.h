@@ -51,10 +51,7 @@ extern void printHighScores();
 extern void writeHighScores();
 extern void readHighScores();
 extern void newHighScore(int);
-extern void titleIdle(void);
-extern void titleHandleMouse(int, int, int, int);
-extern void processHits(unsigned int, GLuint *,int);
+extern void titleHandleLogicalMouse(bool pressed, float x, float y);
 extern void titleHandleKeyboard(unsigned char, int, int);
-extern void reshape(int, int);
 
 #endif

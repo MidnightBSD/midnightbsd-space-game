@@ -13,7 +13,7 @@
 /****************************************************
  * Structures
  ***************************************************/
-//key preferences structure. values are GLUT keycodes.
+// Persisted legacy key values; SDL translates into this stable representation.
 struct PlayerKeys {
 	int thrust;
 	int rotateCounterClockwise;
@@ -37,15 +37,9 @@ struct PlayerKeys {
  ***************************************************/
 extern void configureInit(void);
 extern void configureDisplay(void);
-extern void configurePrintTitle();
-extern void configurePrintText();
-extern void configurePrintButtons(MyButton *, unsigned int, GLenum, int);
 extern void writeConfiguration();
 extern void readConfiguration();
 extern void restoreDefaults();
 extern std::string_view convertASCIItoText(int);
-extern void configureHandleMouse(int, int, int, int);
-extern void configureProcessHits(unsigned int, GLuint *, int);
-extern void configureHandleKeyboard(unsigned char, int, int);
-extern void configureHandleSpecialKeys(int, int, int);
+extern void configureHandleLogicalMouse(bool pressed, float x, float y);
 extern void assignKey(int);

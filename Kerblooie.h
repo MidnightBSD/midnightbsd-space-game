@@ -36,8 +36,9 @@ class Kerblooie : public GameObject {
 		Kerblooie() = default;
 		Kerblooie(Coordinate positionIn, Vector directionIn, int lifespanIn, float particleRadius, GLubyte *colorHint);
 		void drawInGame() const override; //overrides function in GameObject
-		void draw() const override;
 		
+	protected:
+		void drawCore(float x, float y) const override;
 
 };
 

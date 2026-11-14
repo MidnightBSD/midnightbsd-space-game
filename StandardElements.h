@@ -9,13 +9,10 @@
  *
  */
 
-#if defined(__APPLE__) || defined(MACOSX)
-	#include <GLUT/glut.h>
-#else
-	#include <GL/glut.h>
-#endif
-
+#include <cstdint>
 #include <stdlib.h>
+
+using GLubyte = std::uint8_t;
 
 
 #define PI					3.141592654

@@ -23,7 +23,9 @@ class Shot : public GameObject {
 		
 	//functions
 		Shot() = default;
-		void draw() const override;
+
+	protected:
+		void drawCore(float x, float y) const override;
 
 };
 

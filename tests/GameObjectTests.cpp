@@ -2,10 +2,7 @@
 
 #include <cassert>
 
-class TestObject final : public GameObject {
-public:
-    void draw() const override {}
-};
+class TestObject final : public GameObject {};
 
 int main() {
     Spaceship ship;
