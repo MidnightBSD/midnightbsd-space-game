@@ -11,6 +11,10 @@
 #include "Renderer.h"
 #include <stdlib.h>
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+
 const int Asteroid::asteroidSizes[3] = {10, 20, 30};
 
 
@@ -42,6 +46,47 @@ Asteroid::Asteroid(int sizeCode, float positionX, float positionY){
 
 
 void Asteroid::drawCore(float x, float y) const {
-	Renderer::current()->filledCircle(x, y, radius, static_cast<float>(rotationAngle),
-		{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, 1.0F}, 7);
+	Renderer *renderer = Renderer::current();
+	if (renderer == nullptr) return;
+
+	const RenderColor base{color[0] / 255.0F, color[1] / 255.0F, color[2] / 255.0F, 1.0F};
+	const auto shade = [&](float factor) {
+		return RenderColor{std::clamp(base.red * factor, 0.0F, 1.0F),
+			std::clamp(base.green * factor, 0.0F, 1.0F),
+			std::clamp(base.blue * factor, 0.0F, 1.0F), 1.0F};
+	};
+	const float radians = static_cast<float>(rotationAngle) * PI / 180.0F;
+	const float sine = std::sin(radians);
+	const float cosine = std::cos(radians);
+	const auto point = [&](float localX, float localY, RenderColor tint) {
+		return RenderVertex{x + localX * cosine - localY * sine,
+			y + localX * sine + localY * cosine, 0.0F, tint};
+	};
+	const auto center = [&](float localX, float localY) {
+		return std::array<float, 2>{x + localX * cosine - localY * sine,
+			y + localX * sine + localY * cosine};
+	};
+
+	// The darker outer shell gives the low-polygon body a defined edge.
+	renderer->filledCircle(x, y, radius, static_cast<float>(rotationAngle), shade(0.34F), 7);
+	renderer->filledCircle(x, y, radius * 0.92F, static_cast<float>(rotationAngle), base, 7);
+
+	const std::array<RenderVertex, 15> facets = {
+		point(radius * -0.68F, radius * 0.14F, shade(0.58F)), point(radius * -0.18F, radius * 0.06F, shade(0.90F)), point(radius * -0.32F, radius * 0.62F, shade(0.76F)),
+		point(radius * -0.18F, radius * 0.06F, shade(0.90F)), point(radius * 0.55F, radius * 0.30F, shade(1.15F)), point(radius * 0.18F, radius * 0.70F, shade(0.82F)),
+		point(radius * -0.18F, radius * 0.06F, shade(0.90F)), point(radius * 0.35F, radius * -0.62F, shade(0.66F)), point(radius * 0.55F, radius * 0.30F, shade(1.15F)),
+		point(radius * -0.68F, radius * 0.14F, shade(0.58F)), point(radius * -0.30F, radius * -0.66F, shade(0.46F)), point(radius * -0.18F, radius * 0.06F, shade(0.90F)),
+		point(radius * -0.18F, radius * 0.06F, shade(0.90F)), point(radius * -0.30F, radius * -0.66F, shade(0.46F)), point(radius * 0.35F, radius * -0.62F, shade(0.66F)),
+	};
+	renderer->triangles(facets);
+
+	const auto crater = [&](float localX, float localY, float craterRadius) {
+		const auto position = center(localX, localY);
+		renderer->filledCircle(position[0], position[1], craterRadius, 0.0F, shade(0.32F), 6);
+		renderer->filledCircle(position[0] - craterRadius * 0.18F, position[1] + craterRadius * 0.18F,
+			craterRadius * 0.56F, 0.0F, shade(0.54F), 6);
+	};
+	crater(radius * 0.34F, radius * 0.38F, radius * 0.14F);
+	crater(radius * -0.42F, radius * -0.26F, radius * 0.11F);
+	crater(radius * 0.20F, radius * -0.42F, radius * 0.08F);
 }
