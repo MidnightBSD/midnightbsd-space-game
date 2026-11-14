@@ -54,4 +54,13 @@ if(BUILD_TESTING)
     add_executable(linked_list_tests tests/LinkedListTests.cpp)
     target_include_directories(linked_list_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     add_test(NAME linked_list_tests COMMAND linked_list_tests)
+
+    add_executable(game_random_tests tests/GameRandomTests.cpp)
+    target_include_directories(game_random_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME game_random_tests COMMAND game_random_tests)
+
+    add_executable(game_object_tests tests/GameObjectTests.cpp GameObject.cpp Spaceship.cpp)
+    target_include_directories(game_object_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(game_object_tests ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
+    add_test(NAME game_object_tests COMMAND game_object_tests)
 endif()

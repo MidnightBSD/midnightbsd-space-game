@@ -13,7 +13,7 @@
 /*****Global Variables*****/
 extern GLubyte playerColors[][3];
 
-MyButton titleButtons[3];
+std::array<MyButton, 3> titleButtons;
 extern int buttonBeingPressed; //defined in Configure Screen
 extern int buttonWidth;
 extern int buttonHeight;
@@ -68,7 +68,7 @@ void titleInit(){
 	buttonWidth = 128;
 	buttonHeight = 32;
 		
-	sprintf(titleButtons[0].text, "One-player Game");
+	setButtonText(titleButtons[0], "One-player Game");
 	titleButtons[0].position.x = FRAMEWIDTH*1/4;
 	titleButtons[0].position.y = FRAMEHEIGHT*3/16;
 		titleButtons[0].color[0] = playerColors[P(1)][0]; //Note:
@@ -76,7 +76,7 @@ void titleInit(){
 		titleButtons[0].color[2] = playerColors[P(1)][2]; //so you can't get the colors from there!
 		titleButtons[0].color[3] = 128; //50%
 	
-	sprintf(titleButtons[1].text, "Two-player Game");
+	setButtonText(titleButtons[1], "Two-player Game");
 	titleButtons[1].position.x = FRAMEWIDTH*1/2;
 	titleButtons[1].position.y = FRAMEHEIGHT*3/16;
 		titleButtons[1].color[0] = playerColors[P(2)][0];
@@ -84,7 +84,7 @@ void titleInit(){
 		titleButtons[1].color[2] = playerColors[P(2)][2];
 		titleButtons[1].color[3] = 128; //50%
 	
-	sprintf(titleButtons[2].text, "Configure");
+	setButtonText(titleButtons[2], "Configure");
 	titleButtons[2].position.x = FRAMEWIDTH*3/4;
 	titleButtons[2].position.y = FRAMEHEIGHT*3/16;
 		titleButtons[2].color[0] = 255;
@@ -106,7 +106,7 @@ void titleDisplay(void) {
 	printTitle();
 	printHighScores();
 	if(enterHighScoredMode == false)
-		configurePrintButtons(titleButtons,3,GL_RENDER, 0);
+		configurePrintButtons(titleButtons.data(), titleButtons.size(), GL_RENDER, 0);
 	//	printButtons(GL_RENDER);
 	glutSwapBuffers();
 	
@@ -424,7 +424,7 @@ void titleHandleMouse(int button, int state, int x, int y){
 			//gluOrtho2D(xmin, xmax, ymin, ymax); that is, the normal viewing area
 		gluOrtho2D( 0, FRAMEWIDTH, 0, FRAMEHEIGHT );
 		
-		configurePrintButtons(titleButtons,3,GL_SELECT, 0);
+		configurePrintButtons(titleButtons.data(), titleButtons.size(), GL_SELECT, 0);
 		//restore viewing matrix
 		glPopMatrix();
 		glutSwapBuffers();

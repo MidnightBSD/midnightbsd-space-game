@@ -20,12 +20,12 @@ class Iterator{
 		LinkedList<Object> *list;
 		
 	public:
-		Iterator(LinkedList<Object> *);
+		explicit Iterator(LinkedList<Object> *);
 		Iterator(LinkedList<Object> *, Node<Object> *);
 		Object * nextObject();
-		Node<Object> * getCurrentNode();
+		Node<Object> * getCurrentNode() const;
 		void removeCurrentPosition();
-		bool atEnd();
+		[[nodiscard]] bool atEnd() const;
 		void rewind();
 		
 };
@@ -65,7 +65,7 @@ Object* Iterator<Object>::nextObject(){
 	if(currentNode != list->tail)
 		return currentNode->object;
 	else
-		return NULL;
+		return nullptr;
 }
 
 
@@ -74,7 +74,7 @@ Object* Iterator<Object>::nextObject(){
  *  returns the Node at which we currently reside
  ***************************************************/
 template<class Object>
-Node<Object> * Iterator<Object>::getCurrentNode(){
+Node<Object> * Iterator<Object>::getCurrentNode() const{
 	return currentNode;
 }
 
@@ -95,7 +95,7 @@ void Iterator<Object>::removeCurrentPosition(){
  *  returns true if the iterator is currently pointing to the tail
  ***************************************************/
 template<class Object>
-bool Iterator<Object>::atEnd(){
+bool Iterator<Object>::atEnd() const{
 	return (currentNode == list->tail );
 }
 

@@ -9,14 +9,10 @@
  */
 
 #include "Kerblooie.h"
+#include "GameRandom.h"
 
 const int Kerblooie::kerblooieSizes[6] = {6, 24, 36, 48, 60, 72};
 
-
-/****************************************************
- * constructor
- ***************************************************/
-Kerblooie::Kerblooie(){}
 
 /****************************************************
  * constructor
@@ -33,7 +29,7 @@ Kerblooie::Kerblooie(Coordinate positionIn, Vector directionIn, int lifespanIn, 
 	radius = particleDiameter/2; //I don't know why I use diameters here
 	
 	for(counter = 0; counter < 3; counter++)
-		color[counter] = colorHint[counter] + rand()%(256-colorHint[counter])*(int)pow(-1,rand()); //takes hinted color and gives it some variation
+		color[counter] = colorHint[counter] + GameRandom::integer(0, 255 - colorHint[counter]) * (GameRandom::boolean() ? 1 : -1); //takes hinted color and gives it some variation
 	color[3] = 255; //starts out at maximum brightness
 }
 
@@ -58,7 +54,7 @@ void Kerblooie::draw() const{
 	float randomParticleSize; //each kerblooie particle's size is set to "twinkle" slightly
 	
 	glColor4ubv( color );
-	randomParticleSize = radius + (rand()%2 * 0.25)/2;
+	randomParticleSize = radius + (GameRandom::integer(0, 1) * 0.25F)/2;
 	glBegin(GL_TRIANGLE_FAN);
 		for(angle = 0; angle < 2*PI; angle += 2*PI/5){
 			glVertex2f( randomParticleSize*cos(angle), 

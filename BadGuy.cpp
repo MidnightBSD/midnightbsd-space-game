@@ -10,12 +10,6 @@
 #include "BadGuy.h"
 
 /****************************************************
- * constructor
- ***************************************************/
-BadGuy::BadGuy(){};
-
-
-/****************************************************
  * draw
  *  there is no special function for drawing bad guys
  *  it is just handled by the Spaceship.draw() function

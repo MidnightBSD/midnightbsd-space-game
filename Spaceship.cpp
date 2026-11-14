@@ -9,14 +9,6 @@
 #include "Spaceship.h"
 
 /****************************************************
- * constructor
- ***************************************************/
-Spaceship::Spaceship(){
-	shieldCoveragePercentage = 0.75; // 3/4 is the default.
-};
-
-
-/****************************************************
  * draw
  *  paints the spaceship, the shield bubble (if any),
  *  and the rocket thrust
@@ -244,11 +236,6 @@ void Spaceship::drawHealthMeter(int hudWidth, int hudHeight, bool growsRight) co
  * intersectsWith
  *	overrides GameObject function so as to shrink the impact radius for this spaceship
  ***************************************************/
-bool Spaceship::intersectsWith(const GameObject *otherObject, bool twoWayCompare){
-	bool intersects;
-	float originalRadius = radius;
-	radius *= shieldCoveragePercentage; //shrink down the spaceship radius for the comparison
-	intersects = GameObject::intersectsWith(otherObject); //now do the regular calculations, which will be affected by the shrunken radius
-	radius = originalRadius; //now restore the radius to its proper size
-	return intersects;
+float Spaceship::collisionRadius() const{
+	return radius * shieldCoveragePercentage;
 }

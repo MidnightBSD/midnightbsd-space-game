@@ -13,8 +13,8 @@
 /*****Global Variables*****/
 extern GLubyte playerColors[][3];
 
-MyButton configureButtons[MAX_NUMBER_PLAYERS];
-MyButton playerButtons[MAX_NUMBER_PLAYERS][NUMBER_ACTIONS];
+std::array<MyButton, MAX_NUMBER_PLAYERS> configureButtons;
+std::array<std::array<MyButton, NUMBER_ACTIONS>, MAX_NUMBER_PLAYERS> playerButtons;
 int buttonWidth;
 int buttonHeight;
 
@@ -78,7 +78,7 @@ void configureInit(void){
 				case 3:	actionKey = playerKeys[P(playerCounter)].fire;						break;
 				case 4:	actionKey = playerKeys[P(playerCounter)].reverse;					break;
 			}
-			sprintf(playerButtons[P(playerCounter)][counter].text, "%s", convertASCIItoText(actionKey) );
+			setButtonText(playerButtons[P(playerCounter)][counter], convertASCIItoText(actionKey));
 			
 			playerButtons[P(playerCounter)][counter].position.x = xPosition;
 			playerButtons[P(playerCounter)][counter].position.y = yPosition;
@@ -92,7 +92,7 @@ void configureInit(void){
 	
 	//The control buttons
 	
-	sprintf(configureButtons[0].text, "Cancel");
+	setButtonText(configureButtons[0], "Cancel");
 	configureButtons[0].position.x = FRAMEWIDTH*1/3;
 	configureButtons[0].position.y = FRAMEHEIGHT*1/8;
 		configureButtons[0].color[0] = 255;
@@ -100,7 +100,7 @@ void configureInit(void){
 		configureButtons[0].color[2] = 0;
 		configureButtons[0].color[3] = 128; //50%
 	
-	sprintf(configureButtons[1].text, "OK");
+	setButtonText(configureButtons[1], "OK");
 	configureButtons[1].position.x = FRAMEWIDTH*2/3;
 	configureButtons[1].position.y = FRAMEHEIGHT*1/8;
 		configureButtons[1].color[0] = 0;
@@ -122,10 +122,10 @@ void configureDisplay(void) {
 	configurePrintTitle();
 	configurePrintText();
 	buttonHeight = 24;
-	configurePrintButtons(playerButtons[P(1)], NUMBER_ACTIONS, GL_RENDER, 100);
-	configurePrintButtons(playerButtons[P(2)], NUMBER_ACTIONS, GL_RENDER, 200);
+	configurePrintButtons(playerButtons[P(1)].data(), playerButtons[P(1)].size(), GL_RENDER, 100);
+	configurePrintButtons(playerButtons[P(2)].data(), playerButtons[P(2)].size(), GL_RENDER, 200);
 	buttonHeight = 32; //control buttons are bigger!
-	configurePrintButtons(configureButtons, 2, GL_RENDER, 0);
+	configurePrintButtons(configureButtons.data(), configureButtons.size(), GL_RENDER, 0);
 	glutSwapBuffers();
 	
 }
@@ -169,12 +169,12 @@ void configurePrintText() {
 	float           stringWidth         = 0;
 	char            columnHeadings[32];
 	char            labelString[64];
-	char            *actionNames[]      = {	"Thrust",
+	const char      *actionNames[]      = {	"Thrust",
 											"Rotate CCW (Left)",
 											"Rotate CW (Right)",
 											"Fire",
 											"Mystical Reverse*"};
-	char            *actionName         = NULL;
+	const char      *actionName         = nullptr;
 	float           linePosition; //in pixels; the distance from the top of the screen to render the current line of text.
 	unsigned int    playerCounter;
 	unsigned int    counter;
@@ -323,11 +323,11 @@ void configurePrintButtons(MyButton *buttonList, unsigned int numberOfButtons, G
 		
 /**
 		//Bitmap font
-		stringWidth = strlen(buttonList[counter].text);
+		stringWidth = std::char_traits<char>::length(buttonList[counter].text.data());
 		//Now change stringWidth to mean the width of our string in world coordinates
 		stringWidth *= glutBitmapWidth(GLUT_BITMAP_8_BY_13, 'A');
 		glRasterPos2i( - stringWidth/2, - 13/4);
-		for(letterCounter = 0; letterCounter < strlen(buttonList[counter].text); letterCounter++){
+		for(letterCounter = 0; letterCounter < std::char_traits<char>::length(buttonList[counter].text.data()); letterCounter++){
 			glutBitmapCharacter( GLUT_BITMAP_8_BY_13 , buttonList[counter].text[letterCounter]);
 		}
 ***/
@@ -337,14 +337,14 @@ void configurePrintButtons(MyButton *buttonList, unsigned int numberOfButtons, G
 		glPushMatrix();
 
 		stringWidth = 0;
-		for(letterCounter = 0; letterCounter < strlen(buttonList[counter].text); letterCounter++){
+		for(letterCounter = 0; letterCounter < std::char_traits<char>::length(buttonList[counter].text.data()); letterCounter++){
 			stringWidth += glutStrokeWidth( GLUT_STROKE_ROMAN , buttonList[counter].text[letterCounter])*1.2;
 		}
 		//Now change stringWidth to mean the width of our string in world coordinates
 		glScalef(scaleFactor, scaleFactor, 0);
 		glTranslatef( - (stringWidth/2), - 119.05*3/8, 0);
 		glLineWidth(1);
-		for(letterCounter = 0; letterCounter < strlen(buttonList[counter].text); letterCounter++){
+		for(letterCounter = 0; letterCounter < std::char_traits<char>::length(buttonList[counter].text.data()); letterCounter++){
 			glutStrokeCharacter( GLUT_STROKE_ROMAN , buttonList[counter].text[letterCounter]);
 			glTranslatef( glutStrokeWidth( GLUT_STROKE_ROMAN , buttonList[counter].text[letterCounter]) * 0.2,
 							0, 0);
@@ -362,7 +362,7 @@ void configurePrintButtons(MyButton *buttonList, unsigned int numberOfButtons, G
 					  );
 		}
 		else //just any old button
-			glColor4ubv(buttonList[counter].color);
+			glColor4ubv(buttonList[counter].color.data());
 		
 		glBegin(GL_POLYGON);
 			glVertex2f( - buttonWidth/2,
@@ -379,7 +379,7 @@ void configurePrintButtons(MyButton *buttonList, unsigned int numberOfButtons, G
 		glEnd();
 		
 		//Border
-		glColor3ubv(buttonList[counter].color);
+		glColor3ubv(buttonList[counter].color.data());
 		glLineWidth(3.0);
 		glBegin(GL_LINE_LOOP);
 			glVertex2f( - buttonWidth/2,
@@ -505,11 +505,11 @@ void restoreDefaults(){
  *  accepts the values of a keypressed and coverts it
  *	to a nice pretty string.
  ***************************************************/
-char* convertASCIItoText(int ascii){
-	static char string[] = {0,'\0'}; //static because I'm lazy: I'm returning a local variable and I don't want it to get overwritten after the function exits!
+std::string_view convertASCIItoText(int ascii){
+	static std::array<char, 2> string{};
 	if(ascii >= 33 && ascii < 127){
 		string[0] = ascii;
-		return string;
+		return std::string_view(string.data(), 1);
 	}
 	else
 		if(ascii >= 0){
@@ -635,10 +635,10 @@ void configureHandleMouse(int button, int state, int x, int y){
 		gluOrtho2D( 0, FRAMEWIDTH, 0, FRAMEHEIGHT );
 		
 		buttonHeight = 32;
-		configurePrintButtons(configureButtons, 2, GL_SELECT, 0);
+		configurePrintButtons(configureButtons.data(), configureButtons.size(), GL_SELECT, 0);
 		buttonHeight = 24;
-		configurePrintButtons(playerButtons[P(1)], NUMBER_ACTIONS, GL_SELECT, 100);
-		configurePrintButtons(playerButtons[P(2)], NUMBER_ACTIONS, GL_SELECT, 200);
+		configurePrintButtons(playerButtons[P(1)].data(), playerButtons[P(1)].size(), GL_SELECT, 100);
+		configurePrintButtons(playerButtons[P(2)].data(), playerButtons[P(2)].size(), GL_SELECT, 200);
 		//restore viewing matrix
 		glPopMatrix();
 		glutSwapBuffers();
@@ -735,7 +735,7 @@ void assignKey(int keypressed){
 				case 4:	keys->reverse					= keypressed;	break;
 			}
 			
-			sprintf(playerButtons[P(playerNumber)][actionNumber].text, "%s", convertASCIItoText(keypressed) );
+			setButtonText(playerButtons[P(playerNumber)][actionNumber], convertASCIItoText(keypressed));
 			activeButton = -1;
 		}
 	}

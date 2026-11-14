@@ -86,7 +86,7 @@ void GameObject::adjustCoordinate(float movementScaleFactor){
  ***************************************************/
 bool GameObject::intersectsWith(const GameObject *otherObject, bool twoWayCompare) const{
 	Coordinate shiftedPosition;
-	float lethalDistance = this->radius + otherObject->radius;
+	float lethalDistance = collisionRadius() + otherObject->collisionRadius();
 	
 	//try the basic distance first
 	if( distanceBetween(this->position, otherObject->position) < lethalDistance )
@@ -126,4 +126,8 @@ bool GameObject::intersectsWith(const GameObject *otherObject, bool twoWayCompar
 
 	//and if all else fails,
 	return false; //the objects don't intersect
+}
+
+float GameObject::collisionRadius() const{
+	return radius;
 }

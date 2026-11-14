@@ -14,13 +14,13 @@
 class BadGuy : public Spaceship {
 	
 	public:
-		int smartiness; //times per second to update course?
-		int timeToNextUpdate;
-		int rotationTimeToLive;
-		int thrustTimeToLive;
+		int smartiness = 0; //times per second to update course?
+		int timeToNextUpdate = 0;
+		int rotationTimeToLive = 0;
+		int thrustTimeToLive = 0;
 
 	//functions
-		BadGuy();
+		BadGuy() = default;
 		
 };
 

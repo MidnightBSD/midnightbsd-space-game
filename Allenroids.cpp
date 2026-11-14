@@ -20,6 +20,7 @@
 #include "Allenroids.h"
 
 #include "ConfigureScreen.h"
+#include "GameRandom.h"
 #include "sound.h"
 #include "Starfield.h"
 #include "TitleScreen.h"
@@ -120,9 +121,7 @@ void gameInit(int numberOfPlayersChosen){
 	badGuyList.clearList();
 	
 	//start level 1
-	#ifdef RANDOM_ON
-		srand( time(NULL) );
-	#endif
+	GameRandom::seedFromClock();
 	startLevel(1);
 }
 
@@ -413,12 +412,12 @@ void moveAsteroids(LinkedList<GameObject> * asteroids, float movementScaleFactor
 					bigAsteroidsDestroyedToDate++;
 				}
 				else //This will happen on ASTEROID_MEDIUM
-					asteroidsToRelease = rand()%2+2; //just release a random number. No need to schedule these.
+					asteroidsToRelease = GameRandom::integer(2, 3); //just release a random number. No need to schedule these.
 				for(counter = 0; counter < asteroidsToRelease; counter++){ 
 					newAsteroid = spawnAsteroid(
 						oldAsteroidSize - 1,
-						asteroidToMovePtr->position.x + ( rand()%10 *pow(-1,rand()) ),
-						asteroidToMovePtr->position.y + ( rand()%10 *pow(-1,rand()) ),
+						asteroidToMovePtr->position.x + (GameRandom::integer(0, 9) * (GameRandom::boolean() ? 1 : -1)),
+						asteroidToMovePtr->position.y + (GameRandom::integer(0, 9) * (GameRandom::boolean() ? 1 : -1)),
 						asteroidToMovePtr->direction
 					);
 					asteroids->insertObject(newAsteroid);
@@ -755,7 +754,7 @@ if(playerToAttack != 0){ //then a valid player does exist. Note that there may n
 	   (angleBetweenBadGuyNoseAndDirection > 10 ||
 	    magnitudeOfVector(badGuy->direction) < 0.25*shotSpeed )
 	  ){
-		badGuy->thrustTimeToLive = 62 + rand()%62;
+		badGuy->thrustTimeToLive = GameRandom::integer(62, 123);
 		badGuy->thrusting = true;
 	}
 	
@@ -862,7 +861,7 @@ bool isShotHitByShots(Shot *shotToTest, Iterator<GameObject> *shotComparisonIter
  ***************************************************/
 HitData isCrystalHit(Crystal *crystal, LinkedList<GameObject> *shots){
 	Shot *shotToTest;
-	HitData isHit;
+	HitData isHit{};
 	Iterator<GameObject> shotListIterator(shots);
 	
 	isHit.hitCode = false;
@@ -891,7 +890,7 @@ HitData isCrystalHit(Crystal *crystal, LinkedList<GameObject> *shots){
  ***************************************************/
 HitData isAsteroidHit(Asteroid *asteroid, LinkedList<GameObject> *shots){
 	Shot *shotToTest;
-	HitData isHit;
+	HitData isHit{};
 	int shotOwner;
 	Iterator<GameObject> shotListIterator(shots);
 
@@ -1230,17 +1229,17 @@ void summonBadGuy(int smartinessValue) {
 		gremlin->color[1] = badGuyColors[1];
 		gremlin->color[2] = badGuyColors[2];
 	
-		gremlin->rotationAngle = rand()%360;
+		gremlin->rotationAngle = GameRandom::integer(0, 359);
 		
 		//Create the position somewhere along the edge of the screen
-		alongX = rand()%2; //true or false
+		alongX = GameRandom::boolean();
 		if(alongX == true){
-			gremlin->position.x = rand() % FRAMEWIDTH; //create a point somewhere along x
-			gremlin->position.y = rand()%2 * FRAMEHEIGHT; //put it either on the top of the screen or the bottom
+			gremlin->position.x = GameRandom::integer(0, FRAMEWIDTH - 1); //create a point somewhere along x
+			gremlin->position.y = GameRandom::boolean() ? FRAMEHEIGHT : 0; //put it either on the top of the screen or the bottom
 		}
 		else{ //along y
-			gremlin->position.x = rand()%2 * FRAMEWIDTH; //create a point somewhere along x
-			gremlin->position.y = rand() % FRAMEHEIGHT; //put it either on the top of the screen or the bottom
+			gremlin->position.x = GameRandom::boolean() ? FRAMEWIDTH : 0; //create a point somewhere along x
+			gremlin->position.y = GameRandom::integer(0, FRAMEHEIGHT - 1); //put it either on the top of the screen or the bottom
 		}
 		
 		gremlin->direction.x = 0; //Start out at a "stop," but give it a random direction and thrust time
@@ -1256,9 +1255,9 @@ void summonBadGuy(int smartinessValue) {
 		
 		//Special Bad Guy Code:
 		gremlin->smartiness = smartinessValue;
-		gremlin->timeToNextUpdate = rand()%500;
+		gremlin->timeToNextUpdate = GameRandom::integer(0, 499);
 		gremlin->rotationTimeToLive = 0;
-		gremlin->thrustTimeToLive = rand()%500;
+		gremlin->thrustTimeToLive = GameRandom::integer(0, 499);
 		
 		badGuyList.insertObject(gremlin);
 		firstCall = true;
@@ -1278,16 +1277,16 @@ Asteroid *spawnAsteroid(int sizeIn, float positionX, float positionY, Vector hin
 	
 	asteroid = new Asteroid(sizeIn, positionX, positionY);
 	
-	asteroidAngle = rand()%360;
+	asteroidAngle = GameRandom::integer(0, 359);
 	//the Magnitude: a Random Number between 0 and 1, multiplied by a speed for the level
 	
 	if(sizeIn == ASTEROID_BIG){
 		do{
-			magnitude = (1+levelNumber/5)*((float) rand()/RAND_MAX + std::abs((float) sizeIn/sizeof(Asteroid::asteroidSizes)/sizeof(int)) - 1.5 );
+			magnitude = (1+levelNumber/5)*(GameRandom::real(0.0F, 1.0F) + std::abs((float) sizeIn/sizeof(Asteroid::asteroidSizes)/sizeof(int)) - 1.5 );
 		}while(magnitude == 0); //an asteroid must be moving!
 	}
 	else
-		magnitude = magnitudeOfVector(hint) *(1 + fmod((float) rand()/RAND_MAX, 0.25) ); //because smaller rocks should go a little faster, we bump up the speed from the hint
+		magnitude = magnitudeOfVector(hint) * (1 + GameRandom::real(0.0F, 0.25F)); //because smaller rocks should go a little faster, we bump up the speed from the hint
 	asteroid->direction.x = magnitude * cos(asteroidAngle) + hint.x;
 	asteroid->direction.y = magnitude * sin(asteroidAngle) + hint.y;
 	
@@ -1340,17 +1339,16 @@ void spawnKerblooie(int sizeIn, float radius, GLubyte *colorHint, Coordinate pos
 
 		//the Magnitude: a Random Number between 0 and 1, multiplied by a speed. 16 is the max speed; only achieveable on the biggest explosion
 		do{
-			magnitude = (float) rand()/RAND_MAX * ((float) sizeIn/KERBLOOIE_HUGE +1); //cast random to float beforehand; Integer/(float) Integer does not do a float division.
-			//printf("Magnitude: %f; Rand: %d; RandMax = %d\n", magnitude, random, RAND_MAX);
+			magnitude = GameRandom::real(0.0F, 1.0F) * ((float) sizeIn/KERBLOOIE_HUGE +1);
 		}while(magnitude == 0); //an particle must be moving!
 		
 		particleDirection.x = magnitude * cos(particleAngle) + hint.x;
 		particleDirection.y = magnitude * sin(particleAngle) + hint.y;
 
 		particleLifespan = (int) (
-				(rand()%2000 + 250) * ((float) sizeIn/KERBLOOIE_HUGE +1)
+				GameRandom::integer(250, 2249) * ((float) sizeIn/KERBLOOIE_HUGE +1)
 											); // (0.25 < t < 2 seconds)*explosionSize
-		particleRadius = (float) rand()/RAND_MAX * ( rand()%(sizeIn+1) ) + 2.25;
+		particleRadius = GameRandom::real(0.0F, 1.0F) * GameRandom::integer(0, sizeIn) + 2.25F;
 		
 		Kerblooie *particle = new Kerblooie(particlePosition, particleDirection, particleLifespan, particleRadius, colorHint);
 				
@@ -1373,11 +1371,10 @@ void spawnCrystal(int specimen, Coordinate position, LinkedList<GameObject> *lis
 	newCrystal->position = position;
 	newCrystal->mass = 2;
 	
-	crystalAngle = rand()%360;
+	crystalAngle = GameRandom::integer(0, 359);
 	//the Magnitude: level Number plus a random adjustment.
 	do{
 		magnitude = levelNumber/4.0;
-		//printf("Magnitude: %f; Rand: %d; RandMax = %d\n", magnitude, random, RAND_MAX);
 	}while(magnitude == 0); //a crystal must be moving!
 	
 	newCrystal->direction.x = magnitude * cos(crystalAngle);
@@ -1385,7 +1382,7 @@ void spawnCrystal(int specimen, Coordinate position, LinkedList<GameObject> *lis
 	
 	newCrystal->crystalFlavor = specimen;
 	newCrystal->timeToLive = 10000; //10 seconds
-	newCrystal->rotationIncrement = (float) rand()/RAND_MAX + 30/FRAMES_PER_SECOND;
+	newCrystal->rotationIncrement = GameRandom::real(0.0F, 1.0F) + 30.0F/FRAMES_PER_SECOND;
 	if(specimen == CRYSTAL_SHIELDPOWER){
 		newCrystal->radius = 8;
 		newCrystal->thickness = 1;
@@ -1421,9 +1418,6 @@ void startLevel(int level) {
 	unsigned int *newCrystalReleaseSchedule[CRYSTAL_NUMBER_OF_SPECIMENS] = {NULL};
 	int *newBadGuySchedule = NULL;
 	
-	#ifdef RANDOM_ON
-		srand( time(NULL) );
-	#endif
 	zeroVector.x = 0;
 	zeroVector.y = 0;
 	
@@ -1479,7 +1473,7 @@ void startLevel(int level) {
 			return;
 		}
 		for(counter = 0; counter < totalNumberLargeAsteroids; counter++){
-			newAsteroidReleaseSchedule[counter] = rand()%2+2; //either 2 or three new asteroids to be released
+			newAsteroidReleaseSchedule[counter] = GameRandom::integer(2, 3); //either 2 or three new asteroids to be released
 			numberUnsmallAsteroids += newAsteroidReleaseSchedule[counter]; //the number of unsmalls has now been increased by the random number just generated
 		}
 		unsmallAsteroidsDestroyedToDate = 0;
@@ -1490,7 +1484,7 @@ void startLevel(int level) {
 		#ifdef DEBUG_CRYSTALS
 			printf("\n\n");
 		#endif
-		numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] = level*3/4 + ( rand()%level )/2;
+		numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] = level*3/4 + GameRandom::integer(0, level - 1)/2;
 		
 		for(counter = 0; counter < CRYSTAL_NUMBER_OF_SPECIMENS; counter++){
 			unsigned int scheduleLength = numberCrystalsToRelease[counter] == 0 ? 1 : numberCrystalsToRelease[counter];
@@ -1509,7 +1503,7 @@ void startLevel(int level) {
 			}
 			for(scheduleCounter = 0; scheduleCounter < numberCrystalsToRelease[counter]; scheduleCounter++){
 				do{
-					newCrystalReleaseSchedule[counter][scheduleCounter] = rand()%numberUnsmallAsteroids; //try a random number somewhere amongst the unsmall explosions
+					newCrystalReleaseSchedule[counter][scheduleCounter] = GameRandom::integer(0, numberUnsmallAsteroids - 1); //try a random number somewhere amongst the unsmall explosions
 				}while( scheduleCounter * numberUnsmallAsteroids / numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] >= newCrystalReleaseSchedule[counter][scheduleCounter] || //these two lines specify the bracket conditions (lower and upper), which are vital to ensuring the crystals are *evenly* distributed
 						newCrystalReleaseSchedule[counter][scheduleCounter] > (scheduleCounter+1)*numberUnsmallAsteroids/numberCrystalsToRelease[CRYSTAL_SHIELDPOWER] //value must be within the desired bracket
 						|| (
@@ -1534,7 +1528,7 @@ void startLevel(int level) {
 		 *	They are scheduled by the index of an unsmall asteroid destruction
 		 */
 		if(level > 1)
-			numberBadGuys = level/5 + rand()%2;
+			numberBadGuys = level/5 + GameRandom::integer(0, 1);
 		else
 			numberBadGuys = 0; //first level is easy
 		if(numberBadGuys > 0){
@@ -1549,7 +1543,7 @@ void startLevel(int level) {
 				return;
 			}
 			for(scheduleCounter = 0; scheduleCounter < numberBadGuys; scheduleCounter++){
-				newBadGuySchedule[scheduleCounter] = 1 + rand()%partitionWidth + scheduleCounter*partitionWidth;
+				newBadGuySchedule[scheduleCounter] = 1 + GameRandom::integer(0, partitionWidth - 1) + scheduleCounter*partitionWidth;
 				//printf("%d,", badGuySchedule[scheduleCounter]);
 			}
 		}
@@ -1577,7 +1571,7 @@ void startLevel(int level) {
 		free(badGuySchedule);
 		badGuySchedule = newBadGuySchedule;
 		for(counter = 0; counter < totalNumberLargeAsteroids; counter++){
-			Asteroid *newAsteroid = spawnAsteroid(ASTEROID_BIG,rand() % FRAMEWIDTH, rand() % FRAMEHEIGHT , zeroVector);
+			Asteroid *newAsteroid = spawnAsteroid(ASTEROID_BIG, GameRandom::integer(0, FRAMEWIDTH - 1), GameRandom::integer(0, FRAMEHEIGHT - 1), zeroVector);
 			asteroidList.insertObject(newAsteroid);
 		}
 		badGuysSummonedToDate = 0;

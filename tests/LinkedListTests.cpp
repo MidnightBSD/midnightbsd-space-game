@@ -1,4 +1,4 @@
-#include "LinkedList.h"
+#include "Iterator.h"
 
 #include <cassert>
 #include <type_traits>
@@ -29,6 +29,11 @@ int main() {
 
         list.insertObject(new OwnedValue);
         list.insertObject(new OwnedValue);
+        assert(!list.isEmpty());
+
+        Iterator<OwnedValue> iterator(&list);
+        assert(iterator.nextObject() != nullptr);
+        iterator.removeCurrentPosition();
         assert(!list.isEmpty());
 
         list.clearList();

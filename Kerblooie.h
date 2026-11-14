@@ -28,15 +28,15 @@ class Kerblooie : public GameObject {
 	public:
 		static const int kerblooieSizes[6];
 
-		int lifespan; //how long this particle's life will actually be
-		int timeToLive; //milliseconds of life this particle has left
-		GLubyte color[4]; //original color and fade percentage, interpreted as alpha value
+		int lifespan = 0; //how long this particle's life will actually be
+		int timeToLive = 0; //milliseconds of life this particle has left
+		GLubyte color[4]{}; //original color and fade percentage, interpreted as alpha value
 		
 	//functions
-		Kerblooie();
+		Kerblooie() = default;
 		Kerblooie(Coordinate positionIn, Vector directionIn, int lifespanIn, float particleRadius, GLubyte *colorHint);
-		void drawInGame() const; //overrides function in GameObject
-		virtual void draw() const;
+		void drawInGame() const override; //overrides function in GameObject
+		void draw() const override;
 		
 
 };

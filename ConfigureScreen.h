@@ -14,13 +14,13 @@
  * Structures
  ***************************************************/
 //key preferences structure. values are GLUT keycodes.
-typedef struct playerKeys {
+struct PlayerKeys {
 	int thrust;
 	int rotateCounterClockwise;
 	int rotateClockwise;
 	int fire;
 	int reverse;
-} PlayerKeys;
+};
 
 /****************************************************
  * Macros
@@ -43,7 +43,7 @@ extern void configurePrintButtons(MyButton *, unsigned int, GLenum, int);
 extern void writeConfiguration();
 extern void readConfiguration();
 extern void restoreDefaults();
-extern char* convertASCIItoText(int);
+extern std::string_view convertASCIItoText(int);
 extern void configureHandleMouse(int, int, int, int);
 extern void configureProcessHits(unsigned int, GLuint *, int);
 extern void configureHandleKeyboard(unsigned char, int, int);

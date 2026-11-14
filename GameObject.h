@@ -18,18 +18,21 @@
 class GameObject{
 
 	public:
-		Coordinate position; //current centerpoint of the object
-		Vector direction; //the direction vector of *movement*
-		int mass; //how heavy this object is; used in collisions
-		float radius; //every object is within some radius
+		Coordinate position{}; //current centerpoint of the object
+		Vector direction{}; //the direction vector of *movement*
+		int mass = 0; //how heavy this object is; used in collisions
+		float radius = 0.0F; //every object is within some radius
 		
 	public:
 		virtual ~GameObject();
 	
-		void drawInGame() const; //draws the object (calling draw) at its position; handles wrapping at screen edges
+		virtual void drawInGame() const; //draws the object (calling draw) at its position; handles wrapping at screen edges
 		virtual void draw() const =0; //generic draw function pays no attention to position
 		void adjustCoordinate(float movementScaleFactor);
-		bool intersectsWith(const GameObject *, bool twoWayCompare = true) const; //returns true if this object intersects with the specified object
+		virtual bool intersectsWith(const GameObject *, bool twoWayCompare = true) const; //returns true if this object intersects with the specified object
+
+	protected:
+		virtual float collisionRadius() const;
 };
 
 

@@ -8,6 +8,7 @@
 //
 //==============================================================================
 #include "Starfield.h"
+#include "GameRandom.h"
 
 #include <cstdlib>
 
@@ -104,11 +105,11 @@ void Starfield::GenerateRandomStarfield()
 	// Make new ones
 	for(counter = 0; counter < this->starCount; counter++)
 	{
-		currentStar.location.x	= rand() % FRAMEWIDTH;
-		currentStar.location.y	= rand() % FRAMEHEIGHT;
+		currentStar.location.x	= GameRandom::integer(0, FRAMEWIDTH - 1);
+		currentStar.location.y	= GameRandom::integer(0, FRAMEHEIGHT - 1);
 		
-		currentStar.whiteness	= (float) rand() / RAND_MAX;
-		currentStar.size		= (float) rand() / RAND_MAX * 0.75 + 0.25;
+		currentStar.whiteness	= GameRandom::real(0.0F, 1.0F);
+		currentStar.size		= GameRandom::real(0.25F, 1.0F);
 		
 		this->stars.push_back(currentStar);
 	}

@@ -7,6 +7,7 @@
  */
 
 #include "Asteroid.h"
+#include "GameRandom.h"
 #include <stdlib.h>
 
 const int Asteroid::asteroidSizes[3] = {10, 20, 30};
@@ -27,15 +28,15 @@ Asteroid::Asteroid(int sizeCode, float positionX, float positionY){
 	color[2] = 211;
 	
 	//make it so they're not all the same color
-	color[0] += (rand() % 24) * (GLubyte)pow(-1, rand());
-	color[1] += rand() % 24;
-	color[2] += (rand() % 24) * (GLubyte)pow(-1, rand());
+	color[0] += GameRandom::integer(0, 23) * (GameRandom::boolean() ? 1 : -1);
+	color[1] += GameRandom::integer(0, 23);
+	color[2] += GameRandom::integer(0, 23) * (GameRandom::boolean() ? 1 : -1);
 
 	position.x = positionX;
 	position.y = positionY;
 	direction.x = 0;
 	direction.y = 0;
-	rotationAngle = rand()%360;
+	rotationAngle = GameRandom::integer(0, 359);
 }
 
 

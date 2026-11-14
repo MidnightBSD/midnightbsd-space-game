@@ -55,10 +55,6 @@
 //eternal invincibility; for debugging, of course
 //#define ETERNAL_INVINCIBILITY
 
-//are random numbers actually sorta random?
-#define RANDOM_ON true
-
-
 #define true 1
 #define false 0
 

@@ -11,11 +11,16 @@
 #include "Node.h"
 
 template<class Object>
+class Iterator;
+
+template<class Object>
 class LinkedList{
-	
-	public:
+	private:
 		Node<Object> *head;
 		Node<Object> *tail;
+
+		template<class>
+		friend class Iterator;
 	
 	public:
 		LinkedList();
@@ -27,7 +32,7 @@ class LinkedList{
 		Node<Object> * insertObjectAfterPosition(Node<Object> *, Object *);
 		Node<Object> * removeNode(Node<Object> *);
 		void clearList();
-		bool isEmpty() const;
+		[[nodiscard]] bool isEmpty() const;
 };
 
 

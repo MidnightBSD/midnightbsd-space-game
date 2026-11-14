@@ -17,20 +17,20 @@
 
 class Player {
 	private:
-		int number;
-		int totalNumberOfPlayers;
-		bool enabled; //is this player even active?
-		GLubyte *colors;
+		int number = 0;
+		int totalNumberOfPlayers = 0;
+		bool enabled = false; //is this player even active?
+		GLubyte *colors = nullptr;
 	
 	public:
 		Spaceship spaceship;
-		int lives; //how many lives this player has remaining
-		int defaultMaxStrength; //the strength required for full health
-		int score;
-		int highestLevelAttained;
+		int lives = 0; //how many lives this player has remaining
+		int defaultMaxStrength = 0; //the strength required for full health
+		int score = 0;
+		int highestLevelAttained = 0;
 		
 	//functions
-		Player();
+		Player() = default;
 		Player(int numberArg, int numberOfPlayers, GLubyte *colorsArg, int livesArg, int maxStrength);
 		void spawnSpaceship();
 		bool isEnabled() const;

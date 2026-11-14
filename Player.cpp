@@ -10,11 +10,6 @@
 #include "Player.h"
 
 /****************************************************
- * default constructor
- ***************************************************/
-Player::Player(){
-}
-/****************************************************
  * constructor
  ***************************************************/
 Player::Player(int numberArg, int numberOfPlayers, GLubyte *colorsArg, int livesArg, int maxStrength){

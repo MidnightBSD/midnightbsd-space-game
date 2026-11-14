@@ -24,14 +24,14 @@ class Asteroid : public GameObject {
 	public:
 		static const int asteroidSizes[3];
 	
-		int size; //actually the index of an array which defines the radii of an asteroid. Note that the radius itself is also stored
-		int rotationAngle; //asteroids can be made to spin, or at least be displayed a little differently.
-		GLubyte color[3]; //the color; probably will never change
-		HitData impacted; //has this asteroid been hit yet? If so, it gets tossed.
+		int size = ASTEROID_SMALL; //actually the index of an array which defines the radii of an asteroid. Note that the radius itself is also stored
+		int rotationAngle = 0; //asteroids can be made to spin, or at least be displayed a little differently.
+		GLubyte color[3]{}; //the color; probably will never change
+		HitData impacted{}; //has this asteroid been hit yet? If so, it gets tossed.
 	
 	//functions
 		Asteroid(int, float, float);
-		virtual void draw() const;
+		void draw() const override;
 };
 
 
