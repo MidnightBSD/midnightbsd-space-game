@@ -237,7 +237,9 @@ void printHighScores() {
 	for(scoreIndex = 0; scoreIndex < NUMBER_HIGH_SCORES; scoreIndex++)
 	{
 		//Format the time for Month/Day/Year format
-		strftime(dateForScore, sizeof(dateForScore), "%b. %d, %Y",localtime(&(highscores[scoreIndex].date)) );
+		struct tm *scoreTime = localtime(&(highscores[scoreIndex].date));
+		if(scoreTime != NULL)
+			strftime(dateForScore, sizeof(dateForScore), "%b. %d, %Y", scoreTime);
 		
 		if(enterHighScoredMode == true && scoreIndex == indexNewScore){ //a line for entry of a new high score
 			glColor3ub(255,0,0); //Highlight the new score
@@ -310,7 +312,7 @@ void writeHighScores(){
 			// if we need to without affecting the original data.
 			currentScore = highscores[counter];
 			
-			//On Macs, we always write the data big-endian. So if 
+			//On Macs, we always write the data big-endian. So if
 			// we're on an x86 Mac, we need to flip the bytes.
 			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
 				flipBytes(&currentScore.level, sizeof(short));
@@ -338,21 +340,19 @@ void readHighScores(){
 	}
 	else{
 		for(counter = 0; counter < NUMBER_HIGH_SCORES; counter++){
-			if( !feof(filePtr) ){
-				fread( &highscores[counter], sizeof(struct highScore), 1, filePtr);
-				//On Macs, we always write the data big-endian. So if 
-				// we're on an x86 Mac, we need to flip the bytes.
-				#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
-					flipBytes(&(highscores[counter].level), sizeof(short));
-					flipBytes(&(highscores[counter].score), sizeof(int));
-					flipBytes(&(highscores[counter].date),  sizeof(time_t));
-				#endif
-			}
-			else{
-				//printf("The file is not of a valid format");
+			if(fread(&highscores[counter], sizeof(struct highScore), 1, filePtr) != 1){
+				fclose(filePtr);
+				memset(highscores, '\0', sizeof(highscores));
 				writeHighScores();
-				readHighScores();
+				return;
 			}
+			//On Macs, we always write the data big-endian. So if
+			// we're on an x86 Mac, we need to flip the bytes.
+			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
+				flipBytes(&(highscores[counter].level), sizeof(short));
+				flipBytes(&(highscores[counter].score), sizeof(int));
+				flipBytes(&(highscores[counter].date),  sizeof(time_t));
+			#endif
 		}//end for
 		fclose(filePtr);
 	}//end else

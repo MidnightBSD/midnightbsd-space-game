@@ -419,7 +419,7 @@ void writeConfiguration(){
 			// if we need to without affecting the original data.
 			currentKeys = playerKeys[counter];
 			
-			//On Macs, we always write the data big-endian. So if 
+			//On Macs, we always write the data big-endian. So if
 			// we're on an x86 Mac, we need to flip the bytes.
 			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
 				flipBytes(&currentKeys.thrust,					sizeof(int));
@@ -448,23 +448,20 @@ void readConfiguration(){
 	}
 	else{
 		for(counter = 0; counter < MAX_NUMBER_PLAYERS; counter++){
-			if( !feof(filePtr) ){
-				fread( &playerKeys[counter], sizeof(PlayerKeys), 1, filePtr);
-				//On Macs, we always write the data big-endian. So if 
-				// we're on an x86 Mac, we need to flip the bytes.
-				#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
-					flipBytes(&playerKeys[counter].thrust,					sizeof(int));
-					flipBytes(&playerKeys[counter].rotateCounterClockwise,	sizeof(int));
-					flipBytes(&playerKeys[counter].rotateClockwise,			sizeof(int));
-					flipBytes(&playerKeys[counter].fire,					sizeof(int));
-					flipBytes(&playerKeys[counter].reverse,					sizeof(int));
-				#endif
-			}
-			else{
-				//printf("The file is not of a valid format");
+			if(fread(&playerKeys[counter], sizeof(PlayerKeys), 1, filePtr) != 1){
+				fclose(filePtr);
 				restoreDefaults();
-				readConfiguration();
+				return;
 			}
+			//On Macs, we always write the data big-endian. So if
+			// we're on an x86 Mac, we need to flip the bytes.
+			#if defined(__APPLE__) && defined(__LITTLE_ENDIAN__)
+				flipBytes(&playerKeys[counter].thrust,					sizeof(int));
+				flipBytes(&playerKeys[counter].rotateCounterClockwise,	sizeof(int));
+				flipBytes(&playerKeys[counter].rotateClockwise,			sizeof(int));
+				flipBytes(&playerKeys[counter].fire,					sizeof(int));
+				flipBytes(&playerKeys[counter].reverse,					sizeof(int));
+			#endif
 		}//end for
 		fclose(filePtr);
 	}//end else
