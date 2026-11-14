@@ -8,6 +8,7 @@
 
 #include "sound.h"
 #include "Allenroids.h"
+#include <limits>
 
 boolean audioOn;
 
@@ -83,10 +84,22 @@ void loadSounds(char *nameBuffer[], SDL_AudioCVT soundBuffer[], unsigned int num
 			//fprintf(stderr, "Couldn't load %s: %s\n", nameBuffer[counter], SDL_GetError());
 			return;
 		}
-		SDL_BuildAudioCVT(&soundBuffer[counter],
+		if(SDL_BuildAudioCVT(&soundBuffer[counter],
 				wave.format,	wave.channels,	wave.freq,
-				AUDIO_S16,		2,				22050);
-		soundBuffer[counter].buf = (Uint8 *) malloc(dataLength * soundBuffer[counter].len_mult);
+				AUDIO_S16,		2,				22050) < 0) {
+			SDL_FreeWAV(data);
+			return;
+		}
+		if(soundBuffer[counter].len_mult <= 0 ||
+			dataLength > std::numeric_limits<size_t>::max() / static_cast<size_t>(soundBuffer[counter].len_mult)) {
+			SDL_FreeWAV(data);
+			return;
+		}
+		soundBuffer[counter].buf = (Uint8 *) malloc(dataLength * static_cast<size_t>(soundBuffer[counter].len_mult));
+		if(soundBuffer[counter].buf == NULL) {
+			SDL_FreeWAV(data);
+			return;
+		}
 		memcpy(soundBuffer[counter].buf, data, dataLength);
 		soundBuffer[counter].len = dataLength;
 		SDL_ConvertAudio(&soundBuffer[counter]);
