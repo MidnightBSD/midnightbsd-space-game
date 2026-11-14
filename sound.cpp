@@ -119,6 +119,9 @@ void mixaudio(void *unused, Uint8 *stream, int length)
 	int amount;
 	
     for ( counter = 0; counter < NUMBER_CHANNELS; counter++ ){
+		if(channels[counter].data == NULL ||
+			channels[counter].dataPosition >= channels[counter].dataLength)
+			continue;
 		amount = (channels[counter].dataLength - channels[counter].dataPosition);
 		if ( amount > length ){
 			amount = length;
